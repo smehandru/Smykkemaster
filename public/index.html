@@ -637,6 +637,22 @@
       to { transform: rotate(360deg); }
     }
 
+    /* Button spinner */
+    .btn-spinner {
+      display: inline-block;
+      animation: spin 1s linear infinite;
+      margin-left: 0.5rem;
+    }
+
+    .btn-spinner.hidden {
+      display: none;
+    }
+
+    .btn.loading {
+      opacity: 0.8;
+      pointer-events: none;
+    }
+
     /* Actions Bar */
     .actions-bar {
       display: flex;
@@ -763,7 +779,10 @@
 
         <div class="actions-bar">
           <button class="btn btn-outline" onclick="updateAnalysis()">Oppdater</button>
-          <button class="btn btn-gold" onclick="generateImages()">Generer bilder</button>
+          <button id="generateBtn" class="btn btn-gold" onclick="generateImages()">
+            <span class="btn-text">Generer bilder</span>
+            <span class="btn-spinner hidden">⟳</span>
+          </button>
         </div>
       </section>
 
@@ -788,7 +807,10 @@
         </div>
 
         <div class="actions-bar">
-          <button class="btn btn-gold" onclick="saveToSheets()">Lagre til Google Sheets</button>
+          <button id="saveBtn" class="btn btn-gold" onclick="saveToSheets()">
+            <span class="btn-text">Lagre til Google Sheets</span>
+            <span class="btn-spinner hidden">⟳</span>
+          </button>
         </div>
       </section>
     </main>
@@ -1215,6 +1237,15 @@
     async function generateImages() {
       if (!currentSession) return;
 
+      const btn = document.getElementById('generateBtn');
+      const spinner = btn.querySelector('.btn-spinner');
+      const text = btn.querySelector('.btn-text');
+
+      // Show loading state
+      btn.classList.add('loading');
+      spinner.classList.remove('hidden');
+      text.textContent = 'Genererer...';
+
       showStatus('Starter bildegenerering...', 'info', true);
 
       try {
@@ -1235,9 +1266,17 @@
           startPolling('generation');
         } else {
           showStatus(data.error || 'Generering feilet', 'error', false);
+          // Reset button
+          btn.classList.remove('loading');
+          spinner.classList.add('hidden');
+          text.textContent = 'Generer bilder';
         }
       } catch (error) {
         showStatus('Generering feilet: ' + error.message, 'error', false);
+        // Reset button
+        btn.classList.remove('loading');
+        spinner.classList.add('hidden');
+        text.textContent = 'Generer bilder';
       }
     }
 
@@ -1276,15 +1315,30 @@
 
           showStatus('Alle bilder generert!', 'success', false);
 
+          // Reset generate button
+          resetGenerateButton();
+
           // Show chatbot
           document.getElementById('chatbotSection').classList.remove('hidden');
         } else if (data.status === 'error') {
           clearInterval(pollingInterval);
           pollingInterval = null;
           showStatus('Generering feilet: ' + data.error, 'error', false);
+          resetGenerateButton();
         }
       } catch (error) {
         console.error('Generation polling error:', error);
+      }
+    }
+
+    function resetGenerateButton() {
+      const btn = document.getElementById('generateBtn');
+      if (btn) {
+        btn.classList.remove('loading');
+        const spinner = btn.querySelector('.btn-spinner');
+        const text = btn.querySelector('.btn-text');
+        if (spinner) spinner.classList.add('hidden');
+        if (text) text.textContent = 'Generer bilder';
       }
     }
 
@@ -1429,7 +1483,19 @@
 
     // Save to Google Sheets
     async function saveToSheets() {
-      if (!currentSession) return;
+      if (!currentSession) {
+        showStatus('Ingen aktiv sesjon', 'error', false);
+        return;
+      }
+
+      const btn = document.getElementById('saveBtn');
+      const spinner = btn.querySelector('.btn-spinner');
+      const text = btn.querySelector('.btn-text');
+
+      // Show loading state
+      btn.classList.add('loading');
+      spinner.classList.remove('hidden');
+      text.textContent = 'Lagrer...';
 
       showStatus('Lagrer til Google Drive og Sheets...', 'info', true);
 
@@ -1440,8 +1506,20 @@
 
         const data = await res.json();
 
+        // Reset button
+        btn.classList.remove('loading');
+        spinner.classList.add('hidden');
+        text.textContent = 'Lagre til Google Sheets';
+
         if (res.status === 409) {
           showStatus(`Duplikat: ${data.message}`, 'warning', false);
+          return;
+        }
+
+        if (!res.ok) {
+          console.error('Save error:', data);
+          showStatus(`Lagring feilet: ${data.error}`, 'error', false);
+          addChatMessage(`Feil ved lagring: ${data.error}`, 'bot');
           return;
         }
 
@@ -1452,6 +1530,11 @@
           showStatus(data.error || 'Lagring feilet', 'error', false);
         }
       } catch (error) {
+        console.error('Save exception:', error);
+        // Reset button
+        btn.classList.remove('loading');
+        spinner.classList.add('hidden');
+        text.textContent = 'Lagre til Google Sheets';
         showStatus('Lagring feilet: ' + error.message, 'error', false);
       }
     }

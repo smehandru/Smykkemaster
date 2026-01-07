@@ -469,10 +469,11 @@ app.post('/api/save/:sessionId', requireAuth, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Save error:', error);
+    console.error('Save error:', error.message);
+    console.error('Full error:', error.stack);
     session.status = 'error';
     session.error = error.message;
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: error.message, details: error.stack });
   }
 });
 
