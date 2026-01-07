@@ -1,0 +1,237 @@
+const { VertexAI } = require('@google-cloud/vertexai');
+const path = require('path');
+
+// Set credentials path
+const CREDENTIALS_PATH = process.env.GOOGLE_APPLICATION_CREDENTIALS ||
+  path.join(__dirname, '..', 'service-account.json');
+process.env.GOOGLE_APPLICATION_CREDENTIALS = CREDENTIALS_PATH;
+
+const PROJECT_ID = process.env.GOOGLE_PROJECT_ID || 'project-bcb47e5a-1886-41ee-a91';
+const LOCATION = 'europe-west1';
+
+// Initialize Vertex AI
+let vertexAI = null;
+let generativeModel = null;
+
+function initializeVertexAI() {
+  if (!vertexAI) {
+    vertexAI = new VertexAI({
+      project: PROJECT_ID,
+      location: LOCATION
+    });
+
+    generativeModel = vertexAI.getGenerativeModel({
+      model: 'gemini-2.0-flash-001'
+    });
+  }
+  return generativeModel;
+}
+
+// Extract tag information from jewelry images
+async function extractTagInfo(imageBuffers) {
+  const model = initializeVertexAI();
+
+  // Convert buffers to base64 inline data
+  const imageParts = imageBuffers.map(buffer => ({
+    inlineData: {
+      mimeType: 'image/jpeg',
+      data: buffer.toString('base64')
+    }
+  }));
+
+  const prompt = `Analyser disse smykkebildene nøye. På hvert smykke er det festet en tag/etikett med 3 rader med informasjon:
+
+Rad 1: Vekt i gram (et tall, kan ha desimaler)
+Rad 2: Arbeidskostnad (et tall, ignorer eventuelt + tegn foran)
+Rad 3: Produkt-ID (en unik identifikator/kode)
+
+Finn og returner denne informasjonen. Hvis informasjonen finnes i et av bildene, er det ikke nødvendig å gjenta fra andre bilder.
+
+Returner resultatet NØYAKTIG i dette JSON-formatet (ingen annen tekst):
+{
+  "weight": "vekt i gram som tall",
+  "laborCost": "arbeidskostnad som tall",
+  "productId": "produkt-id som streng",
+  "found": true/false
+}
+
+Hvis du ikke kan finne informasjonen, sett "found" til false.`;
+
+  try {
+    const request = {
+      contents: [
+        {
+          role: 'user',
+          parts: [...imageParts, { text: prompt }]
+        }
+      ]
+    };
+
+    const response = await model.generateContent(request);
+    const result = response.response;
+    const text = result.candidates[0].content.parts[0].text;
+
+    // Parse JSON from response
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0]);
+    }
+
+    return { found: false, error: 'Could not parse response' };
+  } catch (error) {
+    console.error('Gemini tag extraction error:', error);
+    return { found: false, error: error.message };
+  }
+}
+
+// Generate visual descriptor for the jewelry
+async function generateVisualDescriptor(imageBuffers, category) {
+  const model = initializeVertexAI();
+
+  const imageParts = imageBuffers.map(buffer => ({
+    inlineData: {
+      mimeType: 'image/jpeg',
+      data: buffer.toString('base64')
+    }
+  }));
+
+  const categoryNames = {
+    'ring': 'ring',
+    'halskjede': 'halskjede/necklace',
+    'armbaand': 'armbånd/bracelet',
+    'oredobber': 'øredobber/earrings',
+    'anheng': 'anheng/pendant'
+  };
+
+  const prompt = `You are a luxury jewelry expert and image generation prompt specialist.
+
+Analyze these images of a ${categoryNames[category] || 'jewelry piece'} in 22 karat gold.
+
+Create a detailed VISUAL DESCRIPTOR that captures:
+1. The exact design, shape, and style of the jewelry
+2. Surface texture and finish (polished, matte, hammered, etc.)
+3. Any decorative elements, patterns, or engravings
+4. Chain style/thickness if applicable
+5. Stone settings if any
+6. Overall aesthetic (modern, traditional, ethnic, minimalist, ornate, etc.)
+
+The descriptor should be written in English, be specific enough that an AI image generator can recreate this EXACT piece. Focus on visual characteristics only - no dimensions or weight.
+
+Return ONLY the visual descriptor text, nothing else. Make it 2-3 sentences, detailed but concise.`;
+
+  try {
+    const request = {
+      contents: [
+        {
+          role: 'user',
+          parts: [...imageParts, { text: prompt }]
+        }
+      ]
+    };
+
+    const response = await model.generateContent(request);
+    const result = response.response;
+    return result.candidates[0].content.parts[0].text.trim();
+  } catch (error) {
+    console.error('Gemini visual descriptor error:', error);
+    return `A beautiful 22 karat gold ${categoryNames[category] || 'jewelry piece'} with traditional craftsmanship and polished finish.`;
+  }
+}
+
+// Generate product description
+async function generateProductDescription(imageBuffers, category, tagInfo) {
+  const model = initializeVertexAI();
+
+  const imageParts = imageBuffers.map(buffer => ({
+    inlineData: {
+      mimeType: 'image/jpeg',
+      data: buffer.toString('base64')
+    }
+  }));
+
+  const categoryInstructions = {
+    'ring': 'Mål ringstørrelsen i mm diameter og konverter til US size (f.eks. "52/6" betyr 52mm diameter = US size 6)',
+    'oredobber': 'Mål maksimal lengde (L) og maksimal bredde (B) i millimeter (f.eks. "L:25,B:15")',
+    'halskjede': 'Estimer lengden på kjeden hvis synlig',
+    'armbaand': 'Estimer lengden/omkretsen hvis synlig',
+    'anheng': 'Mål høyde og bredde på anhenget i mm hvis mulig'
+  };
+
+  const prompt = `Du er en ekspert på luksussmykker og skriver produktbeskrivelser for en eksklusiv gullsmed.
+
+Analyser disse bildene av et smykke i kategorien: ${category}
+
+Skriv en produktbeskrivelse på norsk i følgende format:
+1. [Hvordan smykket er utformet og ser ut - beskriv design, stil, og detaljer]
+2. [Størrelsesinformasjon: ${categoryInstructions[category] || 'relevante mål'}]
+3. [Vekt: ${tagInfo.weight || 'ukjent'}g i 22 karat gull]
+
+Returner resultatet som JSON:
+{
+  "description": "Den fullstendige produktbeskrivelsen som én sammenhengende tekst",
+  "size": "Størrelsesdimensjonene i riktig format for kategorien"
+}
+
+Vær presis, elegant og profesjonell i beskrivelsen. Ikke nevn tagger eller etiketter.`;
+
+  try {
+    const request = {
+      contents: [
+        {
+          role: 'user',
+          parts: [...imageParts, { text: prompt }]
+        }
+      ]
+    };
+
+    const response = await model.generateContent(request);
+    const result = response.response;
+    const text = result.candidates[0].content.parts[0].text;
+
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0]);
+    }
+
+    return {
+      description: text.trim(),
+      size: ''
+    };
+  } catch (error) {
+    console.error('Gemini description error:', error);
+    return {
+      description: `Et vakkert smykke i 22 karat gull med tradisjonelt håndverk.`,
+      size: ''
+    };
+  }
+}
+
+// Combined analysis function
+async function analyzeJewelryImages(imageBuffers, category) {
+  // Run tag extraction and visual descriptor in parallel
+  const [tagInfo, visualDescriptor] = await Promise.all([
+    extractTagInfo(imageBuffers),
+    generateVisualDescriptor(imageBuffers, category)
+  ]);
+
+  // Generate product description using tag info
+  const productDescription = await generateProductDescription(
+    imageBuffers,
+    category,
+    tagInfo
+  );
+
+  return {
+    tagInfo,
+    visualDescriptor,
+    productDescription
+  };
+}
+
+module.exports = {
+  extractTagInfo,
+  generateVisualDescriptor,
+  generateProductDescription,
+  analyzeJewelryImages,
+  initializeVertexAI
+};

@@ -1,0 +1,1483 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmykkeMaster - Luxury Jewelry Image Studio</title>
+  <style>
+    :root {
+      --gold: #D4AF37;
+      --gold-light: #F4E4BC;
+      --gold-dark: #8B7355;
+      --bg-dark: #1a1a1a;
+      --bg-card: #2a2a2a;
+      --text-light: #f5f5f5;
+      --text-muted: #888;
+      --success: #4CAF50;
+      --error: #f44336;
+      --warning: #ff9800;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-light);
+      min-height: 100vh;
+    }
+
+    /* Header */
+    header {
+      background: linear-gradient(135deg, var(--bg-card), #333);
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid var(--gold);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .logo {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--gold);
+      letter-spacing: 2px;
+    }
+
+    .logo span {
+      color: var(--text-light);
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    /* Buttons */
+    .btn {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-size: 0.85rem;
+    }
+
+    .btn-gold {
+      background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+      color: var(--bg-dark);
+    }
+
+    .btn-gold:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(212, 175, 55, 0.4);
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 2px solid var(--gold);
+      color: var(--gold);
+    }
+
+    .btn-outline:hover {
+      background: var(--gold);
+      color: var(--bg-dark);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* Login Screen */
+    .login-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.95);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .login-card {
+      background: var(--bg-card);
+      padding: 3rem;
+      border-radius: 8px;
+      border: 2px solid var(--gold);
+      text-align: center;
+      max-width: 400px;
+      width: 90%;
+    }
+
+    .login-card h1 {
+      color: var(--gold);
+      margin-bottom: 0.5rem;
+    }
+
+    .login-card p {
+      color: var(--text-muted);
+      margin-bottom: 2rem;
+    }
+
+    .login-card input {
+      width: 100%;
+      padding: 1rem;
+      border: 1px solid var(--gold-dark);
+      border-radius: 4px;
+      background: var(--bg-dark);
+      color: var(--text-light);
+      margin-bottom: 1rem;
+      font-size: 1rem;
+    }
+
+    .login-card input:focus {
+      outline: none;
+      border-color: var(--gold);
+    }
+
+    .login-error {
+      color: var(--error);
+      margin-bottom: 1rem;
+      display: none;
+    }
+
+    /* Main Layout */
+    main {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* Upload Section */
+    .upload-section {
+      background: var(--bg-card);
+      border-radius: 8px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    .upload-section h2 {
+      color: var(--gold);
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid var(--gold-dark);
+      padding-bottom: 0.5rem;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .form-group label {
+      margin-bottom: 0.5rem;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    select {
+      padding: 0.75rem;
+      border: 1px solid var(--gold-dark);
+      border-radius: 4px;
+      background: var(--bg-dark);
+      color: var(--text-light);
+      font-size: 1rem;
+      cursor: pointer;
+    }
+
+    select:focus {
+      outline: none;
+      border-color: var(--gold);
+    }
+
+    /* Dropzone */
+    .dropzone {
+      border: 2px dashed var(--gold-dark);
+      border-radius: 8px;
+      padding: 3rem 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s;
+      background: rgba(212, 175, 55, 0.02);
+    }
+
+    .dropzone:hover, .dropzone.dragover {
+      border-color: var(--gold);
+      background: rgba(212, 175, 55, 0.08);
+    }
+
+    .dropzone-icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+    }
+
+    .dropzone p {
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    .dropzone .hint {
+      font-size: 0.85rem;
+      color: var(--gold-dark);
+    }
+
+    #fileInput {
+      display: none;
+    }
+
+    /* Preview Grid */
+    .preview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+
+    .preview-item {
+      position: relative;
+      aspect-ratio: 1;
+      border-radius: 4px;
+      overflow: hidden;
+      border: 2px solid var(--gold-dark);
+    }
+
+    .preview-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .preview-item .remove {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      background: var(--error);
+      color: white;
+      border: none;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 1rem;
+      line-height: 1;
+    }
+
+    .preview-count {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-top: 1rem;
+    }
+
+    /* Analysis Results */
+    .analysis-section {
+      background: var(--bg-card);
+      border-radius: 8px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    .analysis-section h2 {
+      color: var(--gold);
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid var(--gold-dark);
+      padding-bottom: 0.5rem;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .info-card {
+      background: var(--bg-dark);
+      padding: 1rem;
+      border-radius: 4px;
+      border-left: 3px solid var(--gold);
+    }
+
+    .info-card label {
+      display: block;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 0.5rem;
+    }
+
+    .info-card .value {
+      font-size: 1.25rem;
+      color: var(--gold);
+    }
+
+    .info-card input {
+      width: 100%;
+      padding: 0.5rem;
+      border: 1px solid var(--gold-dark);
+      border-radius: 4px;
+      background: var(--bg-card);
+      color: var(--text-light);
+      font-size: 1rem;
+    }
+
+    .description-box {
+      background: var(--bg-dark);
+      padding: 1.5rem;
+      border-radius: 4px;
+      border-left: 3px solid var(--gold);
+    }
+
+    .description-box label {
+      display: block;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 0.5rem;
+    }
+
+    .description-box textarea {
+      width: 100%;
+      min-height: 100px;
+      padding: 0.75rem;
+      border: 1px solid var(--gold-dark);
+      border-radius: 4px;
+      background: var(--bg-card);
+      color: var(--text-light);
+      font-size: 1rem;
+      resize: vertical;
+    }
+
+    /* Generated Images Gallery */
+    .gallery-section {
+      background: var(--bg-card);
+      border-radius: 8px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    .gallery-section h2 {
+      color: var(--gold);
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid var(--gold-dark);
+      padding-bottom: 0.5rem;
+    }
+
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .gallery-item {
+      background: var(--bg-dark);
+      border-radius: 8px;
+      overflow: hidden;
+      border: 2px solid var(--gold-dark);
+      transition: all 0.3s;
+    }
+
+    .gallery-item:hover {
+      border-color: var(--gold);
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    }
+
+    .gallery-item .image-container {
+      aspect-ratio: 1;
+      position: relative;
+      cursor: pointer;
+      overflow: hidden;
+    }
+
+    .gallery-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.3s;
+    }
+
+    .gallery-item:hover img {
+      transform: scale(1.05);
+    }
+
+    .gallery-item .image-number {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      background: var(--gold);
+      color: var(--bg-dark);
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-weight: 700;
+      font-size: 0.85rem;
+    }
+
+    .gallery-item .regenerate-btn {
+      position: absolute;
+      bottom: 8px;
+      right: 8px;
+      background: rgba(0, 0, 0, 0.8);
+      color: var(--gold);
+      border: 1px solid var(--gold);
+      padding: 0.5rem;
+      border-radius: 4px;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .gallery-item:hover .regenerate-btn {
+      opacity: 1;
+    }
+
+    .gallery-item .info {
+      padding: 1rem;
+    }
+
+    .gallery-item .info h4 {
+      color: var(--text-light);
+      margin-bottom: 0.25rem;
+    }
+
+    .gallery-item .info p {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    /* Skeleton Loader */
+    .skeleton {
+      background: linear-gradient(
+        90deg,
+        var(--bg-dark) 25%,
+        var(--bg-card) 50%,
+        var(--bg-dark) 75%
+      );
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+    }
+
+    @keyframes shimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+
+    .skeleton-image {
+      aspect-ratio: 1;
+    }
+
+    .skeleton-text {
+      height: 1.5rem;
+      border-radius: 4px;
+      margin-bottom: 0.5rem;
+    }
+
+    .skeleton-text.short {
+      width: 60%;
+    }
+
+    /* Chatbot */
+    .chatbot-section {
+      background: var(--bg-card);
+      border-radius: 8px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    .chatbot-section h2 {
+      color: var(--gold);
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid var(--gold-dark);
+      padding-bottom: 0.5rem;
+    }
+
+    .chat-messages {
+      max-height: 300px;
+      overflow-y: auto;
+      margin-bottom: 1rem;
+      padding: 1rem;
+      background: var(--bg-dark);
+      border-radius: 4px;
+    }
+
+    .chat-message {
+      margin-bottom: 1rem;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      max-width: 80%;
+    }
+
+    .chat-message.bot {
+      background: var(--gold-dark);
+      color: var(--text-light);
+      margin-right: auto;
+    }
+
+    .chat-message.user {
+      background: var(--gold);
+      color: var(--bg-dark);
+      margin-left: auto;
+    }
+
+    .chat-input-row {
+      display: flex;
+      gap: 1rem;
+    }
+
+    .chat-input-row input {
+      flex: 1;
+      padding: 0.75rem 1rem;
+      border: 1px solid var(--gold-dark);
+      border-radius: 4px;
+      background: var(--bg-dark);
+      color: var(--text-light);
+      font-size: 1rem;
+    }
+
+    /* Image Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.95);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      padding: 2rem;
+    }
+
+    .modal-content {
+      max-width: 90vw;
+      max-height: 90vh;
+      position: relative;
+    }
+
+    .modal-content img {
+      max-width: 100%;
+      max-height: 90vh;
+      object-fit: contain;
+      border: 2px solid var(--gold);
+      border-radius: 4px;
+    }
+
+    .modal-close {
+      position: absolute;
+      top: -40px;
+      right: 0;
+      background: none;
+      border: none;
+      color: var(--gold);
+      font-size: 2rem;
+      cursor: pointer;
+    }
+
+    /* Status Messages */
+    .status-bar {
+      background: var(--bg-card);
+      padding: 1rem 2rem;
+      border-radius: 4px;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .status-bar.success {
+      border-left: 4px solid var(--success);
+    }
+
+    .status-bar.error {
+      border-left: 4px solid var(--error);
+    }
+
+    .status-bar.warning {
+      border-left: 4px solid var(--warning);
+    }
+
+    .status-bar.info {
+      border-left: 4px solid var(--gold);
+    }
+
+    .spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--gold-dark);
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Actions Bar */
+    .actions-bar {
+      display: flex;
+      gap: 1rem;
+      justify-content: flex-end;
+      margin-top: 1.5rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--gold-dark);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      header {
+        padding: 1rem;
+        flex-direction: column;
+        gap: 1rem;
+      }
+
+      main {
+        padding: 1rem;
+      }
+
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+
+      .gallery-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Login Overlay -->
+  <div id="loginOverlay" class="login-overlay">
+    <div class="login-card">
+      <h1>SmykkeMaster</h1>
+      <p>Luxury Jewelry Image Studio</p>
+      <p id="loginError" class="login-error">Feil passord</p>
+      <input type="password" id="passwordInput" placeholder="Skriv inn passord" autofocus>
+      <button class="btn btn-gold" onclick="login()" style="width: 100%;">Logg inn</button>
+    </div>
+  </div>
+
+  <!-- Main App -->
+  <div id="mainApp" class="hidden">
+    <header>
+      <div class="logo">SMYKKE<span>MASTER</span></div>
+      <div class="header-actions">
+        <span id="sessionIndicator" style="color: var(--text-muted); font-size: 0.85rem;"></span>
+        <button class="btn btn-outline" onclick="newSession()">Ny sesjon</button>
+        <button class="btn btn-outline" onclick="logout()">Logg ut</button>
+      </div>
+    </header>
+
+    <main>
+      <!-- Status Bar -->
+      <div id="statusBar" class="status-bar info hidden">
+        <div class="spinner"></div>
+        <span id="statusText">Klar</span>
+      </div>
+
+      <!-- Upload Section -->
+      <section id="uploadSection" class="upload-section">
+        <h2>Last opp smykkebilder</h2>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Kategori</label>
+            <select id="categorySelect">
+              <option value="">Velg kategori...</option>
+              <option value="ring">Ringer</option>
+              <option value="halskjede">Halskjede</option>
+              <option value="armbaand">Armbånd</option>
+              <option value="oredobber">Øredobber</option>
+              <option value="anheng">Anheng</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Etnisitet for modell</label>
+            <select id="ethnicitySelect">
+              <option value="random">Random</option>
+              <option value="tamilsk">Tamilsk</option>
+              <option value="caucasian">Caucasian</option>
+              <option value="norsk">Norsk</option>
+              <option value="asian">Asian</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
+          <div class="dropzone-icon">📸</div>
+          <p>Dra og slipp bilder her</p>
+          <p>eller klikk for å velge filer</p>
+          <p class="hint">Støtter JPG, PNG, WEBP (maks 10MB per fil)</p>
+        </div>
+        <input type="file" id="fileInput" multiple accept="image/*">
+
+        <div id="previewGrid" class="preview-grid"></div>
+        <p id="previewCount" class="preview-count hidden"></p>
+
+        <div class="actions-bar">
+          <button id="uploadBtn" class="btn btn-gold" onclick="uploadImages()" disabled>
+            Last opp og analyser
+          </button>
+        </div>
+      </section>
+
+      <!-- Analysis Section -->
+      <section id="analysisSection" class="analysis-section hidden">
+        <h2>Analyse resultater</h2>
+
+        <div class="info-grid">
+          <div class="info-card">
+            <label>Produkt-ID</label>
+            <input type="text" id="productIdInput">
+          </div>
+          <div class="info-card">
+            <label>Vekt (gram)</label>
+            <input type="text" id="weightInput">
+          </div>
+          <div class="info-card">
+            <label>Arbeidskostnad</label>
+            <input type="text" id="laborCostInput">
+          </div>
+          <div class="info-card">
+            <label>Størrelse</label>
+            <input type="text" id="sizeInput">
+          </div>
+        </div>
+
+        <div class="description-box">
+          <label>Produktbeskrivelse</label>
+          <textarea id="descriptionInput"></textarea>
+        </div>
+
+        <div class="actions-bar">
+          <button class="btn btn-outline" onclick="updateAnalysis()">Oppdater</button>
+          <button class="btn btn-gold" onclick="generateImages()">Generer bilder</button>
+        </div>
+      </section>
+
+      <!-- Gallery Section -->
+      <section id="gallerySection" class="gallery-section hidden">
+        <h2>Genererte bilder</h2>
+        <div id="galleryGrid" class="gallery-grid"></div>
+      </section>
+
+      <!-- Chatbot Section -->
+      <section id="chatbotSection" class="chatbot-section hidden">
+        <h2>Bildejustering</h2>
+        <div id="chatMessages" class="chat-messages">
+          <div class="chat-message bot">
+            Hei! Bildene er generert. Er du fornøyd, eller ønsker du å regenerere noen av bildene?
+            Si f.eks. "bilde 2" for å regenerere bilde nummer 2, eller "ja" hvis du er fornøyd.
+          </div>
+        </div>
+        <div class="chat-input-row">
+          <input type="text" id="chatInput" placeholder="Skriv melding..." onkeypress="if(event.key==='Enter')sendChat()">
+          <button class="btn btn-gold" onclick="sendChat()">Send</button>
+        </div>
+
+        <div class="actions-bar">
+          <button class="btn btn-gold" onclick="saveToSheets()">Lagre til Google Sheets</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Image Modal -->
+  <div id="imageModal" class="modal-overlay hidden" onclick="closeModal(event)">
+    <div class="modal-content">
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+      <img id="modalImage" src="" alt="Full size image">
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
+  <script>
+    // State
+    let currentSession = null;
+    let selectedFiles = [];
+    let pollingInterval = null;
+
+    // LocalStorage keys
+    const STORAGE_KEYS = {
+      SESSION: 'smykkemaster_session',
+      FILES: 'smykkemaster_files_meta'
+    };
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', async () => {
+      // Check authentication
+      const authCheck = await fetch('/api/auth/check');
+      const authData = await authCheck.json();
+
+      if (authData.authenticated) {
+        showApp();
+        recoverSession();
+      }
+
+      // Setup drag and drop
+      setupDropzone();
+
+      // Setup file input
+      document.getElementById('fileInput').addEventListener('change', handleFileSelect);
+
+      // Password input enter key
+      document.getElementById('passwordInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') login();
+      });
+    });
+
+    // Auth functions
+    async function login() {
+      const password = document.getElementById('passwordInput').value;
+      const errorEl = document.getElementById('loginError');
+
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password })
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+          showApp();
+          await newSession();
+        } else {
+          errorEl.style.display = 'block';
+        }
+      } catch (error) {
+        console.error('Login error:', error);
+        errorEl.textContent = 'Tilkoblingsfeil';
+        errorEl.style.display = 'block';
+      }
+    }
+
+    async function logout() {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      clearSession();
+      document.getElementById('mainApp').classList.add('hidden');
+      document.getElementById('loginOverlay').classList.remove('hidden');
+      document.getElementById('passwordInput').value = '';
+    }
+
+    function showApp() {
+      document.getElementById('loginOverlay').classList.add('hidden');
+      document.getElementById('mainApp').classList.remove('hidden');
+    }
+
+    // Session functions
+    async function newSession() {
+      clearSession();
+      clearUI();
+
+      try {
+        const res = await fetch('/api/session/new', { method: 'POST' });
+        const data = await res.json();
+
+        if (data.success) {
+          currentSession = { id: data.sessionId, status: 'pending' };
+          saveSessionToStorage();
+          updateSessionIndicator();
+          showStatus('Ny sesjon startet', 'info', false);
+        }
+      } catch (error) {
+        console.error('New session error:', error);
+        showStatus('Kunne ikke starte ny sesjon', 'error', false);
+      }
+    }
+
+    function clearSession() {
+      currentSession = null;
+      selectedFiles = [];
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+        pollingInterval = null;
+      }
+      localStorage.removeItem(STORAGE_KEYS.SESSION);
+      localStorage.removeItem(STORAGE_KEYS.FILES);
+    }
+
+    function clearUI() {
+      document.getElementById('previewGrid').innerHTML = '';
+      document.getElementById('previewCount').classList.add('hidden');
+      document.getElementById('analysisSection').classList.add('hidden');
+      document.getElementById('gallerySection').classList.add('hidden');
+      document.getElementById('chatbotSection').classList.add('hidden');
+      document.getElementById('categorySelect').value = '';
+      document.getElementById('ethnicitySelect').value = 'random';
+      document.getElementById('uploadBtn').disabled = true;
+      document.getElementById('statusBar').classList.add('hidden');
+    }
+
+    function saveSessionToStorage() {
+      if (currentSession) {
+        localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(currentSession));
+      }
+    }
+
+    function recoverSession() {
+      const savedSession = localStorage.getItem(STORAGE_KEYS.SESSION);
+      if (savedSession) {
+        currentSession = JSON.parse(savedSession);
+        updateSessionIndicator();
+        // Check session status on server
+        checkSessionStatus();
+      } else {
+        newSession();
+      }
+    }
+
+    async function checkSessionStatus() {
+      if (!currentSession) return;
+
+      try {
+        const res = await fetch(`/api/session/${currentSession.id}`);
+        if (res.ok) {
+          const data = await res.json();
+          currentSession = { ...currentSession, ...data };
+
+          if (data.status === 'analyzed' || data.status === 'generated' || data.status === 'completed') {
+            showAnalysisResults(data);
+          }
+          if (data.status === 'generated' || data.status === 'completed') {
+            await fetchGeneratedImages();
+          }
+        } else {
+          // Session expired, start new
+          await newSession();
+        }
+      } catch (error) {
+        console.error('Session check error:', error);
+      }
+    }
+
+    function updateSessionIndicator() {
+      const indicator = document.getElementById('sessionIndicator');
+      if (currentSession) {
+        indicator.textContent = `Sesjon: ${currentSession.id.substring(0, 8)}...`;
+      } else {
+        indicator.textContent = '';
+      }
+    }
+
+    // Dropzone setup
+    function setupDropzone() {
+      const dropzone = document.getElementById('dropzone');
+
+      dropzone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropzone.classList.add('dragover');
+      });
+
+      dropzone.addEventListener('dragleave', () => {
+        dropzone.classList.remove('dragover');
+      });
+
+      dropzone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropzone.classList.remove('dragover');
+        const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+        addFiles(files);
+      });
+    }
+
+    function handleFileSelect(e) {
+      const files = Array.from(e.target.files);
+      addFiles(files);
+    }
+
+    async function addFiles(files) {
+      // Compress images before adding
+      for (const file of files) {
+        try {
+          const options = {
+            maxSizeMB: 2,
+            maxWidthOrHeight: 2048,
+            useWebWorker: true
+          };
+
+          const compressedFile = await imageCompression(file, options);
+          selectedFiles.push({
+            file: compressedFile,
+            originalName: file.name,
+            preview: URL.createObjectURL(compressedFile)
+          });
+        } catch (error) {
+          console.error('Compression error:', error);
+          // Use original if compression fails
+          selectedFiles.push({
+            file: file,
+            originalName: file.name,
+            preview: URL.createObjectURL(file)
+          });
+        }
+      }
+
+      updatePreviewGrid();
+      updateUploadButton();
+    }
+
+    function removeFile(index) {
+      URL.revokeObjectURL(selectedFiles[index].preview);
+      selectedFiles.splice(index, 1);
+      updatePreviewGrid();
+      updateUploadButton();
+    }
+
+    function updatePreviewGrid() {
+      const grid = document.getElementById('previewGrid');
+      const countEl = document.getElementById('previewCount');
+
+      grid.innerHTML = selectedFiles.map((item, index) => `
+        <div class="preview-item">
+          <img src="${item.preview}" alt="${item.originalName}">
+          <button class="remove" onclick="removeFile(${index})">&times;</button>
+        </div>
+      `).join('');
+
+      if (selectedFiles.length > 0) {
+        countEl.textContent = `${selectedFiles.length} bilde(r) valgt`;
+        countEl.classList.remove('hidden');
+      } else {
+        countEl.classList.add('hidden');
+      }
+    }
+
+    function updateUploadButton() {
+      const btn = document.getElementById('uploadBtn');
+      const category = document.getElementById('categorySelect').value;
+      btn.disabled = selectedFiles.length === 0 || !category;
+    }
+
+    // Update button when category changes
+    document.getElementById('categorySelect')?.addEventListener('change', updateUploadButton);
+
+    // Upload and analyze
+    async function uploadImages() {
+      if (!currentSession || selectedFiles.length === 0) return;
+
+      const category = document.getElementById('categorySelect').value;
+      const ethnicity = document.getElementById('ethnicitySelect').value;
+
+      if (!category) {
+        showStatus('Velg en kategori først', 'warning', false);
+        return;
+      }
+
+      showStatus('Laster opp bilder...', 'info', true);
+
+      try {
+        const formData = new FormData();
+        formData.append('sessionId', currentSession.id);
+        formData.append('category', category);
+        formData.append('ethnicity', ethnicity);
+
+        for (const item of selectedFiles) {
+          formData.append('images', item.file, item.originalName);
+        }
+
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+          currentSession.category = category;
+          currentSession.ethnicity = ethnicity;
+          currentSession.status = 'analyzing';
+          saveSessionToStorage();
+
+          showStatus('Analyserer bilder med Gemini AI...', 'info', true);
+
+          // Start polling for results
+          startPolling('analysis');
+        } else {
+          showStatus(data.error || 'Opplasting feilet', 'error', false);
+        }
+      } catch (error) {
+        console.error('Upload error:', error);
+        showStatus('Opplasting feilet: ' + error.message, 'error', false);
+      }
+    }
+
+    function startPolling(type) {
+      if (pollingInterval) clearInterval(pollingInterval);
+
+      pollingInterval = setInterval(async () => {
+        if (type === 'analysis') {
+          await pollAnalysis();
+        } else if (type === 'generation') {
+          await pollGeneration();
+        }
+      }, 2000);
+    }
+
+    async function pollAnalysis() {
+      try {
+        const res = await fetch(`/api/analysis/${currentSession.id}`);
+        const data = await res.json();
+
+        if (data.status === 'analyzed') {
+          clearInterval(pollingInterval);
+          pollingInterval = null;
+          currentSession.status = 'analyzed';
+          saveSessionToStorage();
+          showAnalysisResults(data);
+          showStatus('Analyse fullført!', 'success', false);
+        } else if (data.status === 'error') {
+          clearInterval(pollingInterval);
+          pollingInterval = null;
+          showStatus('Analyse feilet: ' + data.error, 'error', false);
+        }
+      } catch (error) {
+        console.error('Polling error:', error);
+      }
+    }
+
+    function showAnalysisResults(data) {
+      const section = document.getElementById('analysisSection');
+      section.classList.remove('hidden');
+
+      if (data.tagInfo) {
+        document.getElementById('productIdInput').value = data.tagInfo.productId || '';
+        document.getElementById('weightInput').value = data.tagInfo.weight || '';
+        document.getElementById('laborCostInput').value = data.tagInfo.laborCost || '';
+      }
+
+      if (data.productDescription) {
+        document.getElementById('sizeInput').value = data.productDescription.size || '';
+        document.getElementById('descriptionInput').value = data.productDescription.description || '';
+      }
+    }
+
+    async function updateAnalysis() {
+      if (!currentSession) return;
+
+      const tagInfo = {
+        productId: document.getElementById('productIdInput').value,
+        weight: document.getElementById('weightInput').value,
+        laborCost: document.getElementById('laborCostInput').value
+      };
+
+      const productDescription = {
+        size: document.getElementById('sizeInput').value,
+        description: document.getElementById('descriptionInput').value
+      };
+
+      try {
+        await fetch(`/api/analysis/${currentSession.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tagInfo, productDescription })
+        });
+
+        showStatus('Analyse oppdatert', 'success', false);
+      } catch (error) {
+        showStatus('Oppdatering feilet', 'error', false);
+      }
+    }
+
+    // Image generation
+    async function generateImages() {
+      if (!currentSession) return;
+
+      showStatus('Starter bildegenerering...', 'info', true);
+
+      try {
+        const res = await fetch(`/api/generate/${currentSession.id}`, {
+          method: 'POST'
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+          currentSession.status = 'generating';
+          saveSessionToStorage();
+
+          // Show gallery with skeletons
+          showGallerySkeletons(data.perspectives);
+
+          // Start polling for results
+          startPolling('generation');
+        } else {
+          showStatus(data.error || 'Generering feilet', 'error', false);
+        }
+      } catch (error) {
+        showStatus('Generering feilet: ' + error.message, 'error', false);
+      }
+    }
+
+    function showGallerySkeletons(perspectives) {
+      const section = document.getElementById('gallerySection');
+      const grid = document.getElementById('galleryGrid');
+
+      section.classList.remove('hidden');
+
+      grid.innerHTML = perspectives.map(p => `
+        <div class="gallery-item" data-perspective="${p.id}">
+          <div class="image-container skeleton skeleton-image">
+            <span class="image-number">${p.imageNumber}</span>
+          </div>
+          <div class="info">
+            <h4>${p.name}</h4>
+            <p>Genererer...</p>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function pollGeneration() {
+      try {
+        const res = await fetch(`/api/generated/${currentSession.id}`);
+        const data = await res.json();
+
+        // Update gallery with available images
+        updateGallery(data.images);
+
+        if (data.status === 'generated') {
+          clearInterval(pollingInterval);
+          pollingInterval = null;
+          currentSession.status = 'generated';
+          saveSessionToStorage();
+
+          showStatus('Alle bilder generert!', 'success', false);
+
+          // Show chatbot
+          document.getElementById('chatbotSection').classList.remove('hidden');
+        } else if (data.status === 'error') {
+          clearInterval(pollingInterval);
+          pollingInterval = null;
+          showStatus('Generering feilet: ' + data.error, 'error', false);
+        }
+      } catch (error) {
+        console.error('Generation polling error:', error);
+      }
+    }
+
+    async function fetchGeneratedImages() {
+      try {
+        const res = await fetch(`/api/generated/${currentSession.id}`);
+        const data = await res.json();
+        updateGallery(data.images);
+
+        if (data.images && data.images.length > 0) {
+          document.getElementById('gallerySection').classList.remove('hidden');
+          document.getElementById('chatbotSection').classList.remove('hidden');
+        }
+      } catch (error) {
+        console.error('Fetch generated images error:', error);
+      }
+    }
+
+    function updateGallery(images) {
+      const grid = document.getElementById('galleryGrid');
+
+      if (!images || images.length === 0) return;
+
+      grid.innerHTML = images.map(img => {
+        if (img.success && img.imageBase64) {
+          return `
+            <div class="gallery-item" data-perspective="${img.perspectiveId}">
+              <div class="image-container" onclick="openModal('data:image/jpeg;base64,${img.imageBase64}')">
+                <img src="data:image/jpeg;base64,${img.imageBase64}" alt="${img.perspectiveName}">
+                <span class="image-number">${img.imageNumber}</span>
+                <button class="regenerate-btn" onclick="event.stopPropagation(); regenerateImage('${img.perspectiveId}')">↻</button>
+              </div>
+              <div class="info">
+                <h4>${img.perspectiveName}</h4>
+                <p>Bilde ${img.imageNumber}</p>
+              </div>
+            </div>
+          `;
+        } else if (img.error) {
+          return `
+            <div class="gallery-item" data-perspective="${img.perspectiveId}">
+              <div class="image-container" style="background: var(--bg-dark); display: flex; align-items: center; justify-content: center;">
+                <span class="image-number">${img.imageNumber}</span>
+                <p style="color: var(--error); padding: 1rem; text-align: center;">Feil: ${img.error}</p>
+              </div>
+              <div class="info">
+                <h4>${img.perspectiveName}</h4>
+                <button class="btn btn-outline" style="margin-top: 0.5rem;" onclick="regenerateImage('${img.perspectiveId}')">Prøv igjen</button>
+              </div>
+            </div>
+          `;
+        } else {
+          return `
+            <div class="gallery-item" data-perspective="${img.perspectiveId}">
+              <div class="image-container skeleton skeleton-image">
+                <span class="image-number">${img.imageNumber}</span>
+              </div>
+              <div class="info">
+                <h4>${img.perspectiveName}</h4>
+                <p>Genererer...</p>
+              </div>
+            </div>
+          `;
+        }
+      }).join('');
+    }
+
+    async function regenerateImage(perspectiveId) {
+      showStatus(`Regenererer bilde...`, 'info', true);
+
+      try {
+        const res = await fetch(`/api/regenerate/${currentSession.id}/${perspectiveId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({})
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+          // Update the specific gallery item
+          await fetchGeneratedImages();
+          showStatus('Bilde regenerert!', 'success', false);
+        } else {
+          showStatus(data.error || 'Regenerering feilet', 'error', false);
+        }
+      } catch (error) {
+        showStatus('Regenerering feilet: ' + error.message, 'error', false);
+      }
+    }
+
+    // Modal
+    function openModal(imageSrc) {
+      document.getElementById('modalImage').src = imageSrc;
+      document.getElementById('imageModal').classList.remove('hidden');
+    }
+
+    function closeModal(event) {
+      if (!event || event.target.classList.contains('modal-overlay') || event.target.classList.contains('modal-close')) {
+        document.getElementById('imageModal').classList.add('hidden');
+      }
+    }
+
+    // Chatbot
+    async function sendChat() {
+      const input = document.getElementById('chatInput');
+      const message = input.value.trim();
+
+      if (!message) return;
+
+      addChatMessage(message, 'user');
+      input.value = '';
+
+      try {
+        const res = await fetch(`/api/chat/${currentSession.id}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message })
+        });
+
+        const data = await res.json();
+        addChatMessage(data.message, 'bot');
+
+        if (data.type === 'regenerate' && data.perspectiveId) {
+          await regenerateImage(data.perspectiveId);
+        } else if (data.action === 'save') {
+          // Show save confirmation button is already visible
+        }
+      } catch (error) {
+        addChatMessage('Beklager, en feil oppstod.', 'bot');
+      }
+    }
+
+    function addChatMessage(message, sender) {
+      const container = document.getElementById('chatMessages');
+      const messageEl = document.createElement('div');
+      messageEl.className = `chat-message ${sender}`;
+      messageEl.textContent = message;
+      container.appendChild(messageEl);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    // Save to Google Sheets
+    async function saveToSheets() {
+      if (!currentSession) return;
+
+      showStatus('Lagrer til Google Drive og Sheets...', 'info', true);
+
+      try {
+        const res = await fetch(`/api/save/${currentSession.id}`, {
+          method: 'POST'
+        });
+
+        const data = await res.json();
+
+        if (res.status === 409) {
+          showStatus(`Duplikat: ${data.message}`, 'warning', false);
+          return;
+        }
+
+        if (data.success) {
+          showStatus('Alt lagret! Drive-lenker og Sheets oppdatert.', 'success', false);
+          addChatMessage(`Lagret! Raw-mappe: ${data.driveLinks.raw}, Final-mappe: ${data.driveLinks.final}`, 'bot');
+        } else {
+          showStatus(data.error || 'Lagring feilet', 'error', false);
+        }
+      } catch (error) {
+        showStatus('Lagring feilet: ' + error.message, 'error', false);
+      }
+    }
+
+    // Status display
+    function showStatus(message, type, showSpinner) {
+      const bar = document.getElementById('statusBar');
+      const text = document.getElementById('statusText');
+      const spinner = bar.querySelector('.spinner');
+
+      bar.className = `status-bar ${type}`;
+      bar.classList.remove('hidden');
+      text.textContent = message;
+
+      if (showSpinner) {
+        spinner.style.display = 'block';
+      } else {
+        spinner.style.display = 'none';
+      }
+
+      if (type === 'success' || type === 'error') {
+        setTimeout(() => {
+          bar.classList.add('hidden');
+        }, 5000);
+      }
+    }
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeModal();
+      }
+    });
+  </script>
+</body>
+</html>
