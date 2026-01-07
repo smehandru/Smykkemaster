@@ -1,15 +1,24 @@
 const { google } = require('googleapis');
 const path = require('path');
 
-const CREDENTIALS_PATH = process.env.GOOGLE_APPLICATION_CREDENTIALS ||
-  path.join(__dirname, '..', 'service-account.json');
 const SHEET_ID = process.env.GOOGLE_SHEET_ID || '1kzucTy0lZPuNZFz525Zi1gi9WhuREOoIAEFMFbxyqWs';
 const SHEET_NAME = 'shopify2';
 
+// Get credentials from environment variable or file
+function getCredentials() {
+  if (process.env.GOOGLE_CREDENTIALS) {
+    return JSON.parse(process.env.GOOGLE_CREDENTIALS);
+  }
+  const filePath = process.env.GOOGLE_APPLICATION_CREDENTIALS ||
+    path.join(__dirname, '..', 'service-account.json');
+  return require(filePath);
+}
+
 // Get Sheets client
 async function getSheetsClient() {
+  const credentials = getCredentials();
   const auth = new google.auth.GoogleAuth({
-    keyFile: CREDENTIALS_PATH,
+    credentials,
     scopes: ['https://www.googleapis.com/auth/spreadsheets']
   });
   return google.sheets({ version: 'v4', auth });

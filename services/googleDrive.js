@@ -2,9 +2,15 @@ const { google } = require('googleapis');
 const path = require('path');
 const stream = require('stream');
 
-// Load service account credentials
-const CREDENTIALS_PATH = process.env.GOOGLE_APPLICATION_CREDENTIALS ||
-  path.join(__dirname, '..', 'service-account.json');
+// Get credentials from environment variable or file
+function getCredentials() {
+  if (process.env.GOOGLE_CREDENTIALS) {
+    return JSON.parse(process.env.GOOGLE_CREDENTIALS);
+  }
+  const filePath = process.env.GOOGLE_APPLICATION_CREDENTIALS ||
+    path.join(__dirname, '..', 'service-account.json');
+  return require(filePath);
+}
 
 // Folder IDs (will be populated from parent folder)
 let RAW_FOLDER_ID = null;
@@ -13,8 +19,9 @@ const PARENT_FOLDER_ID = process.env.GOOGLE_FOLDER_ID || '1punP9pW6jzSCTtNp0YZV-
 
 // Create auth client
 async function getAuthClient() {
+  const credentials = getCredentials();
   const auth = new google.auth.GoogleAuth({
-    keyFile: CREDENTIALS_PATH,
+    credentials,
     scopes: [
       'https://www.googleapis.com/auth/drive',
       'https://www.googleapis.com/auth/spreadsheets'

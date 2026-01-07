@@ -1,13 +1,21 @@
 const { VertexAI } = require('@google-cloud/vertexai');
 const path = require('path');
-
-// Set credentials path
-const CREDENTIALS_PATH = process.env.GOOGLE_APPLICATION_CREDENTIALS ||
-  path.join(__dirname, '..', 'service-account.json');
-process.env.GOOGLE_APPLICATION_CREDENTIALS = CREDENTIALS_PATH;
+const fs = require('fs');
 
 const PROJECT_ID = process.env.GOOGLE_PROJECT_ID || 'project-bcb47e5a-1886-41ee-a91';
 const LOCATION = 'europe-west1';
+
+// Setup credentials for Vertex AI
+function setupCredentials() {
+  if (process.env.GOOGLE_CREDENTIALS) {
+    // Write credentials to temp file for Vertex AI
+    const tempPath = '/tmp/google-credentials.json';
+    fs.writeFileSync(tempPath, process.env.GOOGLE_CREDENTIALS);
+    process.env.GOOGLE_APPLICATION_CREDENTIALS = tempPath;
+  } else if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    process.env.GOOGLE_APPLICATION_CREDENTIALS = path.join(__dirname, '..', 'service-account.json');
+  }
+}
 
 // Initialize Vertex AI
 let vertexAI = null;
@@ -15,6 +23,7 @@ let generativeModel = null;
 
 function initializeVertexAI() {
   if (!vertexAI) {
+    setupCredentials();
     vertexAI = new VertexAI({
       project: PROJECT_ID,
       location: LOCATION

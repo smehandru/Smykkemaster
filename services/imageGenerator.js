@@ -1,14 +1,21 @@
 const { VertexAI } = require('@google-cloud/vertexai');
 const path = require('path');
+const fs = require('fs');
 const { buildFullPrompt, PROMPTS } = require('../config/prompts');
-
-// Set credentials path
-const CREDENTIALS_PATH = process.env.GOOGLE_APPLICATION_CREDENTIALS ||
-  path.join(__dirname, '..', 'service-account.json');
-process.env.GOOGLE_APPLICATION_CREDENTIALS = CREDENTIALS_PATH;
 
 const PROJECT_ID = process.env.GOOGLE_PROJECT_ID || 'project-bcb47e5a-1886-41ee-a91';
 const LOCATION = 'us-central1';
+
+// Setup credentials for Vertex AI
+function setupCredentials() {
+  if (process.env.GOOGLE_CREDENTIALS) {
+    const tempPath = '/tmp/google-credentials.json';
+    fs.writeFileSync(tempPath, process.env.GOOGLE_CREDENTIALS);
+    process.env.GOOGLE_APPLICATION_CREDENTIALS = tempPath;
+  } else if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    process.env.GOOGLE_APPLICATION_CREDENTIALS = path.join(__dirname, '..', 'service-account.json');
+  }
+}
 
 // Rate limiting configuration for hobby use (1-2 users, ~50 images/session)
 const RATE_LIMIT = {
@@ -55,6 +62,7 @@ let nanoBananaProModel = null;
 
 function initializeNanoBananaPro() {
   if (!vertexAI) {
+    setupCredentials();
     vertexAI = new VertexAI({
       project: PROJECT_ID,
       location: LOCATION
