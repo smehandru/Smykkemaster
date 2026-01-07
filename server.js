@@ -51,14 +51,12 @@ const upload = multer({
   }
 });
 
-// Authentication middleware
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'SmykkeMester2026';
+// Authentication middleware - DISABLED (no password required)
+// const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'SmykkeMester2026';
 
 function requireAuth(req, res, next) {
-  if (req.session && req.session.authenticated) {
-    return next();
-  }
-  res.status(401).json({ error: 'Unauthorized', message: 'Please log in' });
+  // Authentication disabled - allow all requests
+  return next();
 }
 
 // In-memory session storage for active processing sessions

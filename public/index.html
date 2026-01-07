@@ -670,25 +670,13 @@
   </style>
 </head>
 <body>
-  <!-- Login Overlay -->
-  <div id="loginOverlay" class="login-overlay">
-    <div class="login-card">
-      <h1>SmykkeMaster</h1>
-      <p>Luxury Jewelry Image Studio</p>
-      <p id="loginError" class="login-error">Feil passord</p>
-      <input type="password" id="passwordInput" placeholder="Skriv inn passord" autofocus>
-      <button class="btn btn-gold" onclick="login()" style="width: 100%;">Logg inn</button>
-    </div>
-  </div>
-
   <!-- Main App -->
-  <div id="mainApp" class="hidden">
+  <div id="mainApp">
     <header>
       <div class="logo">SMYKKE<span>MASTER</span></div>
       <div class="header-actions">
         <span id="sessionIndicator" style="color: var(--text-muted); font-size: 0.85rem;"></span>
         <button class="btn btn-outline" onclick="newSession()">Ny sesjon</button>
-        <button class="btn btn-outline" onclick="logout()">Logg ut</button>
       </div>
     </header>
 
@@ -829,14 +817,8 @@
 
     // Initialize
     document.addEventListener('DOMContentLoaded', async () => {
-      // Check authentication
-      const authCheck = await fetch('/api/auth/check');
-      const authData = await authCheck.json();
-
-      if (authData.authenticated) {
-        showApp();
-        recoverSession();
-      }
+      // No authentication required - show app directly
+      showApp();
 
       // Setup drag and drop
       setupDropzone();
@@ -844,10 +826,8 @@
       // Setup file input
       document.getElementById('fileInput').addEventListener('change', handleFileSelect);
 
-      // Password input enter key
-      document.getElementById('passwordInput').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') login();
-      });
+      // Try to recover existing session or create new one
+      recoverSession();
     });
 
     // Auth functions
@@ -878,15 +858,13 @@
     }
 
     async function logout() {
-      await fetch('/api/auth/logout', { method: 'POST' });
+      // No login required - just clear session and start fresh
       clearSession();
-      document.getElementById('mainApp').classList.add('hidden');
-      document.getElementById('loginOverlay').classList.remove('hidden');
-      document.getElementById('passwordInput').value = '';
+      await newSession();
     }
 
     function showApp() {
-      document.getElementById('loginOverlay').classList.add('hidden');
+      // App is already visible - no login required
       document.getElementById('mainApp').classList.remove('hidden');
     }
 
@@ -900,11 +878,6 @@
         const res = await fetch('/api/session/new', { method: 'POST' });
 
         if (!res.ok) {
-          if (res.status === 401) {
-            // Session expired, need to re-login
-            logout();
-            return;
-          }
           throw new Error(`Server error: ${res.status}`);
         }
 
@@ -915,7 +888,7 @@
           saveSessionToStorage();
           updateSessionIndicator();
           console.log('Session created:', currentSession.id);
-          showStatus('Ny sesjon startet', 'info', false);
+          showStatus('Klar til å laste opp bilder', 'info', false);
         } else {
           throw new Error(data.error || 'Unknown error');
         }
