@@ -896,18 +896,32 @@
       clearUI();
 
       try {
+        console.log('Creating new session...');
         const res = await fetch('/api/session/new', { method: 'POST' });
+
+        if (!res.ok) {
+          if (res.status === 401) {
+            // Session expired, need to re-login
+            logout();
+            return;
+          }
+          throw new Error(`Server error: ${res.status}`);
+        }
+
         const data = await res.json();
 
         if (data.success) {
           currentSession = { id: data.sessionId, status: 'pending' };
           saveSessionToStorage();
           updateSessionIndicator();
+          console.log('Session created:', currentSession.id);
           showStatus('Ny sesjon startet', 'info', false);
+        } else {
+          throw new Error(data.error || 'Unknown error');
         }
       } catch (error) {
         console.error('New session error:', error);
-        showStatus('Kunne ikke starte ny sesjon', 'error', false);
+        showStatus('Kunne ikke starte ny sesjon: ' + error.message, 'error', false);
       }
     }
 
@@ -1079,7 +1093,20 @@
 
     // Upload and analyze
     async function uploadImages() {
-      if (!currentSession || selectedFiles.length === 0) return;
+      // Check if session exists, create one if not
+      if (!currentSession) {
+        console.log('No session found, creating new session...');
+        await newSession();
+        if (!currentSession) {
+          showStatus('Kunne ikke opprette sesjon. Prøv å laste siden på nytt.', 'error', false);
+          return;
+        }
+      }
+
+      if (selectedFiles.length === 0) {
+        showStatus('Ingen bilder valgt', 'warning', false);
+        return;
+      }
 
       const category = document.getElementById('categorySelect').value;
       const ethnicity = document.getElementById('ethnicitySelect').value;
@@ -1090,6 +1117,7 @@
       }
 
       showStatus('Laster opp bilder...', 'info', true);
+      console.log('Uploading', selectedFiles.length, 'images to session', currentSession.id);
 
       try {
         const formData = new FormData();
@@ -1105,6 +1133,12 @@
           method: 'POST',
           body: formData
         });
+
+        if (!res.ok) {
+          const errorText = await res.text();
+          console.error('Upload failed:', res.status, errorText);
+          throw new Error(`Server error: ${res.status}`);
+        }
 
         const data = await res.json();
 
