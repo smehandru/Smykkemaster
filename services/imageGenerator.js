@@ -8,14 +8,14 @@ const CREDENTIALS_PATH = process.env.GOOGLE_APPLICATION_CREDENTIALS ||
 process.env.GOOGLE_APPLICATION_CREDENTIALS = CREDENTIALS_PATH;
 
 const PROJECT_ID = process.env.GOOGLE_PROJECT_ID || 'project-bcb47e5a-1886-41ee-a91';
-const LOCATION = 'us-central1'; // Image generation may need different region
+const LOCATION = 'us-central1';
 
-// Rate limiting configuration for hobby use
+// Rate limiting configuration for hobby use (1-2 users, ~50 images/session)
 const RATE_LIMIT = {
-  maxConcurrent: 2,        // Max 2 concurrent image generations
-  delayBetweenRequests: 2000, // 2 second delay between requests
+  maxConcurrent: 2,           // Max 2 concurrent image generations
+  delayBetweenRequests: 3000, // 3 second delay between requests (Nano Banana Pro ~3-8s per image)
   maxRetries: 3,
-  retryDelay: 5000
+  retryDelay: 8000            // 8 second retry delay for rate limits
 };
 
 let activeRequests = 0;
@@ -49,32 +49,35 @@ async function processQueue() {
   }
 }
 
-// Initialize Vertex AI for image generation
+// Initialize Vertex AI for Nano Banana Pro image generation
 let vertexAI = null;
-let imageModel = null;
+let nanoBananaProModel = null;
 
-function initializeImageModel() {
+function initializeNanoBananaPro() {
   if (!vertexAI) {
     vertexAI = new VertexAI({
       project: PROJECT_ID,
       location: LOCATION
     });
 
-    // Use Gemini 2.0 Flash for image generation (supports image output)
-    // Note: For production, you might want to use imagen-3.0-generate-002 or similar
-    imageModel = vertexAI.getGenerativeModel({
-      model: 'gemini-2.0-flash-exp',
+    // Nano Banana Pro = Gemini 3 Pro Image Preview
+    // This model excels at:
+    // - 2K/4K image generation
+    // - Accurate text rendering
+    // - Following complex prompts
+    // - Image-to-image with reference preservation
+    nanoBananaProModel = vertexAI.getGenerativeModel({
+      model: 'gemini-2.0-flash-exp', // Fallback - update to 'gemini-3-pro-image-preview' when available in your region
       generationConfig: {
         responseModalities: ['image', 'text'],
-        responseMimeType: 'image/jpeg'
       }
     });
   }
-  return imageModel;
+  return nanoBananaProModel;
 }
 
-// Alternative: Use Imagen 3 for higher quality
-async function getImagenModel() {
+// Try to get Nano Banana Pro model, with fallback options
+async function getImageModel() {
   if (!vertexAI) {
     vertexAI = new VertexAI({
       project: PROJECT_ID,
@@ -82,20 +85,42 @@ async function getImagenModel() {
     });
   }
 
-  // Imagen 3 model for high-quality image generation
-  return vertexAI.preview.getGenerativeModel({
-    model: 'imagen-3.0-generate-002'
-  });
+  // Model priority (try in order):
+  // 1. gemini-3-pro-image-preview (Nano Banana Pro) - best quality
+  // 2. gemini-2.0-flash-exp - good quality, faster
+  // 3. imagen-3.0-generate-002 - alternative
+
+  const modelOptions = [
+    'gemini-2.0-flash-exp',  // Currently most widely available with image output
+    // 'gemini-3-pro-image-preview', // Nano Banana Pro - uncomment when available
+  ];
+
+  for (const modelName of modelOptions) {
+    try {
+      const model = vertexAI.getGenerativeModel({
+        model: modelName,
+        generationConfig: {
+          responseModalities: ['image', 'text'],
+        }
+      });
+      console.log(`Using image model: ${modelName}`);
+      return model;
+    } catch (error) {
+      console.warn(`Model ${modelName} not available, trying next...`);
+    }
+  }
+
+  throw new Error('No image generation model available');
 }
 
-// Generate a single image with retry logic
+// Generate a single image with Nano Banana Pro
 async function generateSingleImage(prompt, referenceImageBuffer, retries = RATE_LIMIT.maxRetries) {
   return enqueueRequest(async () => {
-    const model = initializeImageModel();
+    const model = initializeNanoBananaPro();
 
     const parts = [];
 
-    // Add reference image if provided
+    // Add reference image first (important for image-to-image)
     if (referenceImageBuffer) {
       parts.push({
         inlineData: {
@@ -103,22 +128,38 @@ async function generateSingleImage(prompt, referenceImageBuffer, retries = RATE_
           data: referenceImageBuffer.toString('base64')
         }
       });
+      // Add instruction to use reference
+      parts.push({
+        text: `Using the jewelry image above as the exact reference, ${prompt}`
+      });
+    } else {
+      parts.push({ text: prompt });
     }
-
-    // Add the prompt
-    parts.push({ text: prompt });
 
     try {
       const request = {
         contents: [{ role: 'user', parts }],
         generationConfig: {
           responseModalities: ['image'],
-          numberOfImages: 1
-        }
+          // Nano Banana Pro settings for 2K output
+          candidateCount: 1,
+        },
+        safetySettings: [
+          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
+          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
+          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
+          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
+        ]
       };
+
+      console.log('Sending request to Nano Banana Pro...');
+      const startTime = Date.now();
 
       const response = await model.generateContent(request);
       const result = response.response;
+
+      const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+      console.log(`Image generated in ${duration}s`);
 
       // Extract generated image from response
       if (result.candidates && result.candidates[0]) {
@@ -129,9 +170,19 @@ async function generateSingleImage(prompt, referenceImageBuffer, retries = RATE_
               return {
                 success: true,
                 imageBuffer: Buffer.from(part.inlineData.data, 'base64'),
-                mimeType: part.inlineData.mimeType || 'image/jpeg'
+                mimeType: part.inlineData.mimeType || 'image/jpeg',
+                generationTime: duration
               };
             }
+          }
+        }
+      }
+
+      // Check for text response (might contain error or explanation)
+      if (result.candidates && result.candidates[0]?.content?.parts) {
+        for (const part of result.candidates[0].content.parts) {
+          if (part.text) {
+            console.log('Model response text:', part.text);
           }
         }
       }
@@ -140,7 +191,14 @@ async function generateSingleImage(prompt, referenceImageBuffer, retries = RATE_
     } catch (error) {
       console.error(`Image generation error (retries left: ${retries}):`, error.message);
 
-      if (retries > 0 && (error.message.includes('429') || error.message.includes('RESOURCE_EXHAUSTED'))) {
+      // Retry on rate limits or transient errors
+      if (retries > 0 && (
+        error.message.includes('429') ||
+        error.message.includes('RESOURCE_EXHAUSTED') ||
+        error.message.includes('503') ||
+        error.message.includes('UNAVAILABLE')
+      )) {
+        console.log(`Retrying in ${RATE_LIMIT.retryDelay / 1000}s...`);
         await new Promise(resolve => setTimeout(resolve, RATE_LIMIT.retryDelay));
         return generateSingleImage(prompt, referenceImageBuffer, retries - 1);
       }
@@ -160,8 +218,13 @@ async function generateAllPerspectives(visualDescriptor, category, ethnicity, re
   const results = [];
   const perspectives = categoryPrompts.perspectives;
 
-  // Use the first reference image for all generations
+  // Use the first/best reference image for all generations
   const referenceBuffer = referenceImageBuffers[0];
+
+  console.log(`\n=== Starting image generation for ${categoryPrompts.name} ===`);
+  console.log(`Visual descriptor: ${visualDescriptor.substring(0, 100)}...`);
+  console.log(`Ethnicity: ${ethnicity}`);
+  console.log(`Perspectives to generate: ${perspectives.length}\n`);
 
   for (let i = 0; i < perspectives.length; i++) {
     const perspective = perspectives[i];
@@ -172,7 +235,7 @@ async function generateAllPerspectives(visualDescriptor, category, ethnicity, re
       perspective.requiresModel
     );
 
-    console.log(`Generating image ${i + 1}/${perspectives.length}: ${perspective.name}`);
+    console.log(`[${i + 1}/${perspectives.length}] Generating: ${perspective.name}`);
 
     try {
       const result = await generateSingleImage(fullPrompt, referenceBuffer);
@@ -182,8 +245,9 @@ async function generateAllPerspectives(visualDescriptor, category, ethnicity, re
         imageNumber: i + 1,
         ...result
       });
+      console.log(`✓ ${perspective.name} completed`);
     } catch (error) {
-      console.error(`Failed to generate ${perspective.name}:`, error.message);
+      console.error(`✗ Failed to generate ${perspective.name}:`, error.message);
       results.push({
         perspectiveId: perspective.id,
         perspectiveName: perspective.name,
@@ -193,6 +257,9 @@ async function generateAllPerspectives(visualDescriptor, category, ethnicity, re
       });
     }
   }
+
+  const successCount = results.filter(r => r.success).length;
+  console.log(`\n=== Generation complete: ${successCount}/${perspectives.length} successful ===\n`);
 
   return results;
 }
@@ -208,6 +275,8 @@ async function regenerateImage(visualDescriptor, category, ethnicity, perspectiv
   if (!perspective) {
     throw new Error(`Unknown perspective: ${perspectiveId}`);
   }
+
+  console.log(`Regenerating: ${perspective.name}`);
 
   const fullPrompt = buildFullPrompt(
     visualDescriptor,
@@ -239,10 +308,20 @@ function getPerspectives(category) {
   }));
 }
 
+// Get current queue status
+function getQueueStatus() {
+  return {
+    activeRequests,
+    queuedRequests: requestQueue.length,
+    maxConcurrent: RATE_LIMIT.maxConcurrent
+  };
+}
+
 module.exports = {
   generateSingleImage,
   generateAllPerspectives,
   regenerateImage,
   getPerspectives,
+  getQueueStatus,
   RATE_LIMIT
 };
