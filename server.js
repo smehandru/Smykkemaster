@@ -587,6 +587,11 @@ async function startServer() {
     await googleDrive.initializeFolders();
     console.log('Google Drive initialized');
 
+    // Initialize Google Sheets (detect available sheet name)
+    console.log('Initializing Google Sheets...');
+    await googleSheets.initializeSheetName();
+    console.log('Google Sheets initialized');
+
     app.listen(PORT, () => {
       console.log(`Server running on http://localhost:${PORT}`);
       console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);

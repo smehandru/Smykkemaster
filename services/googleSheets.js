@@ -2,7 +2,8 @@ const { google } = require('googleapis');
 const path = require('path');
 
 const SHEET_ID = process.env.GOOGLE_SHEET_ID || '1kzucTy0lZPuNZFz525Zi1gi9WhuREOoIAEFMFbxyqWs';
-const SHEET_NAME = 'shopify2';
+// Sheet name can be configured via env var, defaults to first sheet if not found
+let SHEET_NAME = process.env.GOOGLE_SHEET_NAME || 'shopify2';
 
 // Get credentials from environment variable or file
 function getCredentials() {
@@ -22,6 +23,40 @@ async function getSheetsClient() {
     scopes: ['https://www.googleapis.com/auth/spreadsheets']
   });
   return google.sheets({ version: 'v4', auth });
+}
+
+// Get list of sheet names in the spreadsheet
+async function getSheetNames() {
+  const sheets = await getSheetsClient();
+  const response = await sheets.spreadsheets.get({
+    spreadsheetId: SHEET_ID
+  });
+  return response.data.sheets.map(s => s.properties.title);
+}
+
+// Initialize and verify sheet name exists
+async function initializeSheetName() {
+  try {
+    const sheetNames = await getSheetNames();
+    console.log('Available sheets:', sheetNames);
+
+    if (sheetNames.includes(SHEET_NAME)) {
+      console.log(`Using sheet: ${SHEET_NAME}`);
+      return SHEET_NAME;
+    }
+
+    // If configured sheet doesn't exist, use the first sheet
+    if (sheetNames.length > 0) {
+      SHEET_NAME = sheetNames[0];
+      console.log(`Sheet 'shopify2' not found, using first sheet: ${SHEET_NAME}`);
+      return SHEET_NAME;
+    }
+
+    throw new Error('No sheets found in spreadsheet');
+  } catch (error) {
+    console.error('Error initializing sheet name:', error.message);
+    throw error;
+  }
 }
 
 // Get column headers from the sheet
@@ -135,6 +170,8 @@ async function getAllRows() {
 module.exports = {
   getSheetsClient,
   getHeaders,
+  getSheetNames,
+  initializeSheetName,
   checkDuplicateProductId,
   addProductRow,
   getAllRows,
