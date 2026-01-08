@@ -1,27 +1,32 @@
 const { google } = require('googleapis');
-const path = require('path');
 
 const SHEET_ID = process.env.GOOGLE_SHEET_ID || '1kzucTy0lZPuNZFz525Zi1gi9WhuREOoIAEFMFbxyqWs';
 // Sheet name can be configured via env var, defaults to first sheet if not found
 let SHEET_NAME = process.env.GOOGLE_SHEET_NAME || 'shopify2';
 
-// Get credentials from environment variable or file
-function getCredentials() {
-  if (process.env.GOOGLE_CREDENTIALS) {
-    return JSON.parse(process.env.GOOGLE_CREDENTIALS);
-  }
-  const filePath = process.env.GOOGLE_APPLICATION_CREDENTIALS ||
-    path.join(__dirname, '..', 'service-account.json');
-  return require(filePath);
+// OAuth2 credentials
+const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+const REFRESH_TOKEN = process.env.GOOGLE_REFRESH_TOKEN;
+
+// Create OAuth2 auth client
+function getAuthClient() {
+  const oauth2Client = new google.auth.OAuth2(
+    CLIENT_ID,
+    CLIENT_SECRET,
+    'https://developers.google.com/oauthplayground'
+  );
+
+  oauth2Client.setCredentials({
+    refresh_token: REFRESH_TOKEN
+  });
+
+  return oauth2Client;
 }
 
 // Get Sheets client
 async function getSheetsClient() {
-  const credentials = getCredentials();
-  const auth = new google.auth.GoogleAuth({
-    credentials,
-    scopes: ['https://www.googleapis.com/auth/spreadsheets']
-  });
+  const auth = getAuthClient();
   return google.sheets({ version: 'v4', auth });
 }
 

@@ -2,32 +2,29 @@ const { google } = require('googleapis');
 const path = require('path');
 const stream = require('stream');
 
-// Get credentials from environment variable or file
-function getCredentials() {
-  if (process.env.GOOGLE_CREDENTIALS) {
-    return JSON.parse(process.env.GOOGLE_CREDENTIALS);
-  }
-  const filePath = process.env.GOOGLE_APPLICATION_CREDENTIALS ||
-    path.join(__dirname, '..', 'service-account.json');
-  return require(filePath);
-}
-
 // Folder IDs (will be populated from parent folder)
 let RAW_FOLDER_ID = null;
 let FINAL_FOLDER_ID = null;
 const PARENT_FOLDER_ID = process.env.GOOGLE_FOLDER_ID || '1punP9pW6jzSCTtNp0YZV-1PcPFKyr3vI';
 
-// Create auth client
+// OAuth2 credentials
+const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+const REFRESH_TOKEN = process.env.GOOGLE_REFRESH_TOKEN;
+
+// Create OAuth2 auth client
 async function getAuthClient() {
-  const credentials = getCredentials();
-  const auth = new google.auth.GoogleAuth({
-    credentials,
-    scopes: [
-      'https://www.googleapis.com/auth/drive',
-      'https://www.googleapis.com/auth/spreadsheets'
-    ]
+  const oauth2Client = new google.auth.OAuth2(
+    CLIENT_ID,
+    CLIENT_SECRET,
+    'https://developers.google.com/oauthplayground'
+  );
+
+  oauth2Client.setCredentials({
+    refresh_token: REFRESH_TOKEN
   });
-  return auth;
+
+  return oauth2Client;
 }
 
 // Get Drive client
