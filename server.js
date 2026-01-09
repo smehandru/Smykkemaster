@@ -507,6 +507,25 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Get prompts for a category
+app.get('/api/prompts/:category', requireAuth, (req, res) => {
+  const { category } = req.params;
+  const categoryPrompts = PROMPTS[category];
+
+  if (!categoryPrompts) {
+    return res.status(404).json({ error: 'Category not found' });
+  }
+
+  const perspectives = categoryPrompts.perspectives.map(p => ({
+    id: p.id,
+    name: p.name,
+    imageNumber: p.imageNumber,
+    prompt: p.prompt
+  }));
+
+  res.json({ category, perspectives });
+});
+
 // =============================================================================
 // CHATBOT ROUTES (for image regeneration chat)
 // =============================================================================

@@ -159,29 +159,31 @@ async function generateProductDescription(imageBuffers, category, tagInfo) {
   }));
 
   const categoryInstructions = {
-    'ring': 'Mål ringstørrelsen i mm diameter og konverter til US size (f.eks. "52/6" betyr 52mm diameter = US size 6)',
-    'oredobber': 'Mål maksimal lengde (L) og maksimal bredde (B) i millimeter (f.eks. "L:25,B:15")',
-    'halskjede': 'Estimer lengden på kjeden hvis synlig',
-    'armbaand': 'Estimer lengden/omkretsen hvis synlig',
-    'anheng': 'Mål høyde og bredde på anhenget i mm hvis mulig'
+    'ring': 'Ringstørrelse i mm diameter/US size (f.eks. "52mm/US 6")',
+    'oredobber': 'L:lengde, B:bredde i mm (f.eks. "L:25mm, B:15mm")',
+    'halskjede': '',
+    'armbaand': '',
+    'anheng': ''
   };
 
-  const prompt = `Du er en ekspert på luksussmykker og skriver produktbeskrivelser for en eksklusiv gullsmed.
+  const sizeNote = categoryInstructions[category] ? ` Størrelse: ${categoryInstructions[category]}.` : '';
 
-Analyser disse bildene av et smykke i kategorien: ${category}
+  const prompt = `Skriv en KORT og minimalistisk produktbeskrivelse på norsk for dette smykket.
 
-Skriv en produktbeskrivelse på norsk i følgende format:
-1. [Hvordan smykket er utformet og ser ut - beskriv design, stil, og detaljer]
-2. [Størrelsesinformasjon: ${categoryInstructions[category] || 'relevante mål'}]
-3. [Vekt: ${tagInfo.weight || 'ukjent'}g i 22 karat gull]
+Kategori: ${category}
 
-Returner resultatet som JSON:
+Beskrivelsen skal være MAKS 2 setninger og inneholde:
+1. Kort beskrivelse av designet (stil, form, detaljer)
+2. "22 karat gull"
+${category === 'ring' || category === 'oredobber' ? '3. Størrelsesdimensjoner' : ''}
+
+Returner som JSON:
 {
-  "description": "Den fullstendige produktbeskrivelsen som én sammenhengende tekst",
-  "size": "Størrelsesdimensjonene i riktig format for kategorien"
+  "description": "Kort beskrivelse. 22 karat gull.${sizeNote}",
+  "size": "${category === 'ring' ? 'mm/US size' : category === 'oredobber' ? 'L:mm, B:mm' : ''}"
 }
 
-Vær presis, elegant og profesjonell i beskrivelsen. Ikke nevn tagger eller etiketter.`;
+Vær KONSIS - ikke skriv lange beskrivelser. Maksimalt 2 korte setninger.`;
 
   try {
     const request = {

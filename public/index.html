@@ -72,6 +72,9 @@
       text-transform: uppercase;
       letter-spacing: 1px;
       font-size: 0.85rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
     }
 
     .btn-gold {
@@ -99,59 +102,6 @@
       opacity: 0.5;
       cursor: not-allowed;
       transform: none;
-    }
-
-    /* Login Screen */
-    .login-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.95);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 1000;
-    }
-
-    .login-card {
-      background: var(--bg-card);
-      padding: 3rem;
-      border-radius: 8px;
-      border: 2px solid var(--gold);
-      text-align: center;
-      max-width: 400px;
-      width: 90%;
-    }
-
-    .login-card h1 {
-      color: var(--gold);
-      margin-bottom: 0.5rem;
-    }
-
-    .login-card p {
-      color: var(--text-muted);
-      margin-bottom: 2rem;
-    }
-
-    .login-card input {
-      width: 100%;
-      padding: 1rem;
-      border: 1px solid var(--gold-dark);
-      border-radius: 4px;
-      background: var(--bg-dark);
-      color: var(--text-light);
-      margin-bottom: 1rem;
-      font-size: 1rem;
-    }
-
-    .login-card input:focus {
-      outline: none;
-      border-color: var(--gold);
-    }
-
-    .login-error {
-      color: var(--error);
-      margin-bottom: 1rem;
-      display: none;
     }
 
     /* Main Layout */
@@ -364,7 +314,7 @@
 
     .description-box textarea {
       width: 100%;
-      min-height: 100px;
+      min-height: 80px;
       padding: 0.75rem;
       border: 1px solid var(--gold-dark);
       border-radius: 4px;
@@ -451,10 +401,20 @@
       cursor: pointer;
       opacity: 0;
       transition: opacity 0.3s;
+      font-size: 1.2rem;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .gallery-item:hover .regenerate-btn {
       opacity: 1;
+    }
+
+    .gallery-item .regenerate-btn.spinning {
+      animation: spin 1s linear infinite;
     }
 
     .gallery-item .info {
@@ -502,62 +462,53 @@
       width: 60%;
     }
 
-    /* Chatbot */
-    .chatbot-section {
+    /* Save Section */
+    .save-section {
       background: var(--bg-card);
       border-radius: 8px;
       padding: 2rem;
       margin-bottom: 2rem;
     }
 
-    .chatbot-section h2 {
+    .save-section h2 {
       color: var(--gold);
       margin-bottom: 1.5rem;
       border-bottom: 1px solid var(--gold-dark);
       padding-bottom: 0.5rem;
     }
 
-    .chat-messages {
-      max-height: 300px;
-      overflow-y: auto;
-      margin-bottom: 1rem;
-      padding: 1rem;
-      background: var(--bg-dark);
-      border-radius: 4px;
+    .save-status {
+      margin-top: 1.5rem;
     }
 
-    .chat-message {
-      margin-bottom: 1rem;
-      padding: 0.75rem 1rem;
-      border-radius: 8px;
-      max-width: 80%;
-    }
-
-    .chat-message.bot {
-      background: var(--gold-dark);
-      color: var(--text-light);
-      margin-right: auto;
-    }
-
-    .chat-message.user {
-      background: var(--gold);
-      color: var(--bg-dark);
-      margin-left: auto;
-    }
-
-    .chat-input-row {
+    .save-status-item {
       display: flex;
-      gap: 1rem;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 0;
+      color: var(--text-muted);
+      font-size: 1rem;
     }
 
-    .chat-input-row input {
-      flex: 1;
-      padding: 0.75rem 1rem;
-      border: 1px solid var(--gold-dark);
-      border-radius: 4px;
-      background: var(--bg-dark);
-      color: var(--text-light);
-      font-size: 1rem;
+    .save-status-item.completed {
+      color: var(--success);
+    }
+
+    .save-status-item .check-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 2px solid currentColor;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+    }
+
+    .save-status-item.completed .check-icon {
+      background: var(--success);
+      border-color: var(--success);
+      color: white;
     }
 
     /* Image Modal */
@@ -595,6 +546,83 @@
       color: var(--gold);
       font-size: 2rem;
       cursor: pointer;
+    }
+
+    /* Prompt Modal */
+    .prompt-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.9);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      padding: 2rem;
+    }
+
+    .prompt-modal-content {
+      background: var(--bg-card);
+      border: 2px solid var(--gold);
+      border-radius: 8px;
+      max-width: 800px;
+      width: 100%;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+
+    .prompt-modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.5rem;
+      border-bottom: 1px solid var(--gold-dark);
+    }
+
+    .prompt-modal-header h3 {
+      color: var(--gold);
+    }
+
+    .prompt-modal-close {
+      background: none;
+      border: none;
+      color: var(--text-light);
+      font-size: 1.5rem;
+      cursor: pointer;
+    }
+
+    .prompt-modal-body {
+      padding: 1.5rem;
+    }
+
+    .prompt-item {
+      margin-bottom: 1.5rem;
+    }
+
+    .prompt-item label {
+      display: block;
+      color: var(--gold);
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .prompt-item textarea {
+      width: 100%;
+      min-height: 100px;
+      padding: 0.75rem;
+      border: 1px solid var(--gold-dark);
+      border-radius: 4px;
+      background: var(--bg-dark);
+      color: var(--text-light);
+      font-size: 0.9rem;
+      resize: vertical;
+    }
+
+    .prompt-modal-footer {
+      padding: 1.5rem;
+      border-top: 1px solid var(--gold-dark);
+      display: flex;
+      justify-content: flex-end;
+      gap: 1rem;
     }
 
     /* Status Messages */
@@ -641,7 +669,6 @@
     .btn-spinner {
       display: inline-block;
       animation: spin 1s linear infinite;
-      margin-left: 0.5rem;
     }
 
     .btn-spinner.hidden {
@@ -653,6 +680,19 @@
       pointer-events: none;
     }
 
+    /* Dots animation */
+    .dots::after {
+      content: '';
+      animation: dots 1.5s steps(4, end) infinite;
+    }
+
+    @keyframes dots {
+      0%, 20% { content: ''; }
+      40% { content: '.'; }
+      60% { content: '..'; }
+      80%, 100% { content: '...'; }
+    }
+
     /* Actions Bar */
     .actions-bar {
       display: flex;
@@ -661,6 +701,7 @@
       margin-top: 1.5rem;
       padding-top: 1.5rem;
       border-top: 1px solid var(--gold-dark);
+      flex-wrap: wrap;
     }
 
     /* Responsive */
@@ -731,11 +772,13 @@
           </div>
         </div>
 
-        <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
-          <div class="dropzone-icon">📸</div>
-          <p>Dra og slipp bilder her</p>
-          <p>eller klikk for å velge filer</p>
-          <p class="hint">Støtter JPG, PNG, WEBP (maks 10MB per fil)</p>
+        <div id="dropzoneContainer">
+          <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
+            <div class="dropzone-icon">📸</div>
+            <p>Dra og slipp bilder her</p>
+            <p>eller klikk for å velge filer</p>
+            <p class="hint">Støtter JPG, PNG, WEBP (maks 10MB per fil)</p>
+          </div>
         </div>
         <input type="file" id="fileInput" multiple accept="image/*">
 
@@ -744,7 +787,8 @@
 
         <div class="actions-bar">
           <button id="uploadBtn" class="btn btn-gold" onclick="uploadImages()" disabled>
-            Last opp og analyser
+            <span class="btn-text">Last opp og analyser</span>
+            <span class="btn-spinner hidden">⟳</span>
           </button>
         </div>
       </section>
@@ -779,6 +823,7 @@
 
         <div class="actions-bar">
           <button class="btn btn-outline" onclick="updateAnalysis()">Oppdater</button>
+          <button class="btn btn-outline" onclick="openPromptModal()">Prompt</button>
           <button id="generateBtn" class="btn btn-gold" onclick="generateImages()">
             <span class="btn-text">Generer bilder</span>
             <span class="btn-spinner hidden">⟳</span>
@@ -792,25 +837,24 @@
         <div id="galleryGrid" class="gallery-grid"></div>
       </section>
 
-      <!-- Chatbot Section -->
-      <section id="chatbotSection" class="chatbot-section hidden">
-        <h2>Bildejustering</h2>
-        <div id="chatMessages" class="chat-messages">
-          <div class="chat-message bot">
-            Hei! Bildene er generert. Er du fornøyd, eller ønsker du å regenerere noen av bildene?
-            Si f.eks. "bilde 2" for å regenerere bilde nummer 2, eller "ja" hvis du er fornøyd.
-          </div>
-        </div>
-        <div class="chat-input-row">
-          <input type="text" id="chatInput" placeholder="Skriv melding..." onkeypress="if(event.key==='Enter')sendChat()">
-          <button class="btn btn-gold" onclick="sendChat()">Send</button>
-        </div>
+      <!-- Save Section (replaces chatbot) -->
+      <section id="saveSection" class="save-section hidden">
+        <h2>Lagre til Google</h2>
 
-        <div class="actions-bar">
-          <button id="saveBtn" class="btn btn-gold" onclick="saveToSheets()">
-            <span class="btn-text">Lagre til Google Sheets</span>
-            <span class="btn-spinner hidden">⟳</span>
-          </button>
+        <button id="saveBtn" class="btn btn-gold" onclick="saveToSheets()">
+          <span class="btn-text">Lagre til Google Sheets</span>
+          <span class="btn-spinner hidden">⟳</span>
+        </button>
+
+        <div id="saveStatus" class="save-status hidden">
+          <div id="driveStatus" class="save-status-item">
+            <span class="check-icon">✓</span>
+            <span>Bildene er lagret i Drive</span>
+          </div>
+          <div id="sheetsStatus" class="save-status-item">
+            <span class="check-icon">✓</span>
+            <span>Google Sheets er oppdatert</span>
+          </div>
         </div>
       </section>
     </main>
@@ -824,12 +868,31 @@
     </div>
   </div>
 
+  <!-- Prompt Modal -->
+  <div id="promptModal" class="prompt-modal hidden">
+    <div class="prompt-modal-content">
+      <div class="prompt-modal-header">
+        <h3>Rediger Prompts</h3>
+        <button class="prompt-modal-close" onclick="closePromptModal()">&times;</button>
+      </div>
+      <div class="prompt-modal-body" id="promptModalBody">
+        <!-- Prompts will be inserted here -->
+      </div>
+      <div class="prompt-modal-footer">
+        <button class="btn btn-outline" onclick="closePromptModal()">Avbryt</button>
+        <button class="btn btn-gold" onclick="savePrompts()">Lagre endringer</button>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
   <script>
     // State
     let currentSession = null;
     let selectedFiles = [];
     let pollingInterval = null;
+    let customPrompts = {};
+    let perspectivesList = [];
 
     // LocalStorage keys
     const STORAGE_KEYS = {
@@ -923,6 +986,8 @@
     function clearSession() {
       currentSession = null;
       selectedFiles = [];
+      customPrompts = {};
+      perspectivesList = [];
       if (pollingInterval) {
         clearInterval(pollingInterval);
         pollingInterval = null;
@@ -936,11 +1001,18 @@
       document.getElementById('previewCount').classList.add('hidden');
       document.getElementById('analysisSection').classList.add('hidden');
       document.getElementById('gallerySection').classList.add('hidden');
-      document.getElementById('chatbotSection').classList.add('hidden');
+      document.getElementById('saveSection').classList.add('hidden');
+      document.getElementById('saveStatus').classList.add('hidden');
+      document.getElementById('driveStatus').classList.remove('completed');
+      document.getElementById('sheetsStatus').classList.remove('completed');
       document.getElementById('categorySelect').value = '';
       document.getElementById('ethnicitySelect').value = 'random';
       document.getElementById('uploadBtn').disabled = true;
       document.getElementById('statusBar').classList.add('hidden');
+      // Show dropzone again
+      document.getElementById('dropzoneContainer').classList.remove('hidden');
+      // Reset upload button
+      resetUploadButton();
     }
 
     function saveSessionToStorage() {
@@ -972,6 +1044,8 @@
 
           if (data.status === 'analyzed' || data.status === 'generated' || data.status === 'completed') {
             showAnalysisResults(data);
+            // Hide dropzone if already analyzed
+            document.getElementById('dropzoneContainer').classList.add('hidden');
           }
           if (data.status === 'generated' || data.status === 'completed') {
             await fetchGeneratedImages();
@@ -1111,6 +1185,15 @@
         return;
       }
 
+      // Update button to show analyzing state
+      const btn = document.getElementById('uploadBtn');
+      const spinner = btn.querySelector('.btn-spinner');
+      const text = btn.querySelector('.btn-text');
+
+      btn.classList.add('loading');
+      spinner.classList.remove('hidden');
+      text.innerHTML = 'Analyserer<span class="dots"></span>';
+
       showStatus('Laster opp bilder...', 'info', true);
       console.log('Uploading', selectedFiles.length, 'images to session', currentSession.id);
 
@@ -1143,16 +1226,32 @@
           currentSession.status = 'analyzing';
           saveSessionToStorage();
 
+          // Hide dropzone after successful upload
+          document.getElementById('dropzoneContainer').classList.add('hidden');
+
           showStatus('Analyserer bilder med Gemini AI...', 'info', true);
 
           // Start polling for results
           startPolling('analysis');
         } else {
           showStatus(data.error || 'Opplasting feilet', 'error', false);
+          resetUploadButton();
         }
       } catch (error) {
         console.error('Upload error:', error);
         showStatus('Opplasting feilet: ' + error.message, 'error', false);
+        resetUploadButton();
+      }
+    }
+
+    function resetUploadButton() {
+      const btn = document.getElementById('uploadBtn');
+      if (btn) {
+        btn.classList.remove('loading');
+        const spinner = btn.querySelector('.btn-spinner');
+        const text = btn.querySelector('.btn-text');
+        if (spinner) spinner.classList.add('hidden');
+        if (text) text.textContent = 'Last opp og analyser';
       }
     }
 
@@ -1180,10 +1279,12 @@
           saveSessionToStorage();
           showAnalysisResults(data);
           showStatus('Analyse fullført!', 'success', false);
+          resetUploadButton();
         } else if (data.status === 'error') {
           clearInterval(pollingInterval);
           pollingInterval = null;
           showStatus('Analyse feilet: ' + data.error, 'error', false);
+          resetUploadButton();
         }
       } catch (error) {
         console.error('Polling error:', error);
@@ -1233,6 +1334,54 @@
       }
     }
 
+    // Prompt Modal functions
+    async function openPromptModal() {
+      if (!currentSession || !currentSession.category) {
+        showStatus('Velg kategori og last opp bilder først', 'warning', false);
+        return;
+      }
+
+      // Fetch prompts for current category
+      try {
+        const res = await fetch(`/api/prompts/${currentSession.category}`);
+        const data = await res.json();
+
+        if (data.perspectives) {
+          perspectivesList = data.perspectives;
+          renderPromptModal(data.perspectives);
+          document.getElementById('promptModal').classList.remove('hidden');
+        }
+      } catch (error) {
+        console.error('Failed to fetch prompts:', error);
+        showStatus('Kunne ikke hente prompts', 'error', false);
+      }
+    }
+
+    function renderPromptModal(perspectives) {
+      const body = document.getElementById('promptModalBody');
+
+      body.innerHTML = perspectives.map((p, index) => `
+        <div class="prompt-item">
+          <label>Bilde ${p.imageNumber}: ${p.name}</label>
+          <textarea id="prompt_${p.id}" data-perspective-id="${p.id}">${customPrompts[p.id] || p.prompt}</textarea>
+        </div>
+      `).join('');
+    }
+
+    function closePromptModal() {
+      document.getElementById('promptModal').classList.add('hidden');
+    }
+
+    function savePrompts() {
+      const textareas = document.querySelectorAll('#promptModalBody textarea');
+      textareas.forEach(ta => {
+        const perspectiveId = ta.dataset.perspectiveId;
+        customPrompts[perspectiveId] = ta.value;
+      });
+      closePromptModal();
+      showStatus('Prompts lagret', 'success', false);
+    }
+
     // Image generation
     async function generateImages() {
       if (!currentSession) return;
@@ -1250,7 +1399,9 @@
 
       try {
         const res = await fetch(`/api/generate/${currentSession.id}`, {
-          method: 'POST'
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ customPrompts })
         });
 
         const data = await res.json();
@@ -1318,8 +1469,8 @@
           // Reset generate button
           resetGenerateButton();
 
-          // Show chatbot
-          document.getElementById('chatbotSection').classList.remove('hidden');
+          // Show save section
+          document.getElementById('saveSection').classList.remove('hidden');
         } else if (data.status === 'error') {
           clearInterval(pollingInterval);
           pollingInterval = null;
@@ -1350,7 +1501,7 @@
 
         if (data.images && data.images.length > 0) {
           document.getElementById('gallerySection').classList.remove('hidden');
-          document.getElementById('chatbotSection').classList.remove('hidden');
+          document.getElementById('saveSection').classList.remove('hidden');
         }
       } catch (error) {
         console.error('Fetch generated images error:', error);
@@ -1369,7 +1520,7 @@
               <div class="image-container" onclick="openModal('data:image/jpeg;base64,${img.imageBase64}')">
                 <img src="data:image/jpeg;base64,${img.imageBase64}" alt="${img.perspectiveName}">
                 <span class="image-number">${img.imageNumber}</span>
-                <button class="regenerate-btn" onclick="event.stopPropagation(); regenerateImage('${img.perspectiveId}')">↻</button>
+                <button class="regenerate-btn" id="regen_${img.perspectiveId}" onclick="event.stopPropagation(); regenerateImage('${img.perspectiveId}')">↻</button>
               </div>
               <div class="info">
                 <h4>${img.perspectiveName}</h4>
@@ -1407,13 +1558,21 @@
     }
 
     async function regenerateImage(perspectiveId) {
+      // Add spinning animation to the button
+      const regenBtn = document.getElementById(`regen_${perspectiveId}`);
+      if (regenBtn) {
+        regenBtn.classList.add('spinning');
+      }
+
       showStatus(`Regenererer bilde...`, 'info', true);
 
       try {
+        const customPrompt = customPrompts[perspectiveId] || null;
+
         const res = await fetch(`/api/regenerate/${currentSession.id}/${perspectiveId}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({})
+          body: JSON.stringify({ customPrompt })
         });
 
         const data = await res.json();
@@ -1427,6 +1586,11 @@
         }
       } catch (error) {
         showStatus('Regenerering feilet: ' + error.message, 'error', false);
+      } finally {
+        // Remove spinning animation
+        if (regenBtn) {
+          regenBtn.classList.remove('spinning');
+        }
       }
     }
 
@@ -1440,45 +1604,6 @@
       if (!event || event.target.classList.contains('modal-overlay') || event.target.classList.contains('modal-close')) {
         document.getElementById('imageModal').classList.add('hidden');
       }
-    }
-
-    // Chatbot
-    async function sendChat() {
-      const input = document.getElementById('chatInput');
-      const message = input.value.trim();
-
-      if (!message) return;
-
-      addChatMessage(message, 'user');
-      input.value = '';
-
-      try {
-        const res = await fetch(`/api/chat/${currentSession.id}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message })
-        });
-
-        const data = await res.json();
-        addChatMessage(data.message, 'bot');
-
-        if (data.type === 'regenerate' && data.perspectiveId) {
-          await regenerateImage(data.perspectiveId);
-        } else if (data.action === 'save') {
-          // Show save confirmation button is already visible
-        }
-      } catch (error) {
-        addChatMessage('Beklager, en feil oppstod.', 'bot');
-      }
-    }
-
-    function addChatMessage(message, sender) {
-      const container = document.getElementById('chatMessages');
-      const messageEl = document.createElement('div');
-      messageEl.className = `chat-message ${sender}`;
-      messageEl.textContent = message;
-      container.appendChild(messageEl);
-      container.scrollTop = container.scrollHeight;
     }
 
     // Save to Google Sheets
@@ -1496,6 +1621,11 @@
       btn.classList.add('loading');
       spinner.classList.remove('hidden');
       text.textContent = 'Lagrer...';
+
+      // Reset status
+      document.getElementById('saveStatus').classList.remove('hidden');
+      document.getElementById('driveStatus').classList.remove('completed');
+      document.getElementById('sheetsStatus').classList.remove('completed');
 
       showStatus('Lagrer til Google Drive og Sheets...', 'info', true);
 
@@ -1519,13 +1649,19 @@
         if (!res.ok) {
           console.error('Save error:', data);
           showStatus(`Lagring feilet: ${data.error}`, 'error', false);
-          addChatMessage(`Feil ved lagring: ${data.error}`, 'bot');
           return;
         }
 
         if (data.success) {
-          showStatus('Alt lagret! Drive-lenker og Sheets oppdatert.', 'success', false);
-          addChatMessage(`Lagret! Raw-mappe: ${data.driveLinks.raw}, Final-mappe: ${data.driveLinks.final}`, 'bot');
+          // Show checkmarks with animation
+          setTimeout(() => {
+            document.getElementById('driveStatus').classList.add('completed');
+          }, 300);
+          setTimeout(() => {
+            document.getElementById('sheetsStatus').classList.add('completed');
+          }, 600);
+
+          showStatus('Alt lagret!', 'success', false);
         } else {
           showStatus(data.error || 'Lagring feilet', 'error', false);
         }
@@ -1566,6 +1702,7 @@
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         closeModal();
+        closePromptModal();
       }
     });
   </script>
