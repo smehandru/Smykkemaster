@@ -217,7 +217,7 @@ async function generateSingleImage(prompt, referenceImageBuffer, retries = RATE_
 }
 
 // Generate all perspective images for a jewelry piece
-async function generateAllPerspectives(visualDescriptor, category, ethnicity, referenceImageBuffers) {
+async function generateAllPerspectives(visualDescriptor, category, ethnicity, referenceImageBuffers, customPrompts = {}) {
   const categoryPrompts = PROMPTS[category];
   if (!categoryPrompts) {
     throw new Error(`Unknown category: ${category}`);
@@ -232,18 +232,26 @@ async function generateAllPerspectives(visualDescriptor, category, ethnicity, re
   console.log(`\n=== Starting image generation for ${categoryPrompts.name} ===`);
   console.log(`Visual descriptor: ${visualDescriptor.substring(0, 100)}...`);
   console.log(`Ethnicity: ${ethnicity}`);
+  console.log(`Custom prompts provided: ${Object.keys(customPrompts).length}`);
   console.log(`Perspectives to generate: ${perspectives.length}\n`);
 
   for (let i = 0; i < perspectives.length; i++) {
     const perspective = perspectives[i];
-    const fullPrompt = buildFullPrompt(
-      visualDescriptor,
-      perspective.prompt,
-      ethnicity,
-      perspective.requiresModel
-    );
 
-    console.log(`[${i + 1}/${perspectives.length}] Generating: ${perspective.name}`);
+    // Use custom prompt if provided, otherwise build default
+    let fullPrompt;
+    if (customPrompts[perspective.id]) {
+      fullPrompt = customPrompts[perspective.id];
+      console.log(`[${i + 1}/${perspectives.length}] Using CUSTOM prompt for: ${perspective.name}`);
+    } else {
+      fullPrompt = buildFullPrompt(
+        visualDescriptor,
+        perspective.prompt,
+        ethnicity,
+        perspective.requiresModel
+      );
+      console.log(`[${i + 1}/${perspectives.length}] Generating: ${perspective.name}`);
+    }
 
     try {
       const result = await generateSingleImage(fullPrompt, referenceBuffer);
@@ -273,7 +281,7 @@ async function generateAllPerspectives(visualDescriptor, category, ethnicity, re
 }
 
 // Regenerate a specific image
-async function regenerateImage(visualDescriptor, category, ethnicity, perspectiveId, referenceImageBuffer) {
+async function regenerateImage(visualDescriptor, category, ethnicity, perspectiveId, referenceImageBuffer, customPrompt = null) {
   const categoryPrompts = PROMPTS[category];
   if (!categoryPrompts) {
     throw new Error(`Unknown category: ${category}`);
@@ -284,9 +292,10 @@ async function regenerateImage(visualDescriptor, category, ethnicity, perspectiv
     throw new Error(`Unknown perspective: ${perspectiveId}`);
   }
 
-  console.log(`Regenerating: ${perspective.name}`);
+  console.log(`Regenerating: ${perspective.name}${customPrompt ? ' (with custom prompt)' : ''}`);
 
-  const fullPrompt = buildFullPrompt(
+  // Use custom prompt if provided, otherwise build default
+  const fullPrompt = customPrompt || buildFullPrompt(
     visualDescriptor,
     perspective.prompt,
     ethnicity,

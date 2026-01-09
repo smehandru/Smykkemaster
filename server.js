@@ -247,6 +247,10 @@ app.post('/api/generate/:sessionId', requireAuth, async (req, res) => {
     return res.status(400).json({ error: 'Analysis not complete' });
   }
 
+  // Store custom prompts from request
+  const { customPrompts } = req.body || {};
+  session.customPrompts = customPrompts || {};
+
   session.status = 'generating';
   session.generatedImages = [];
 
@@ -274,7 +278,8 @@ async function generateImages(session) {
       session.visualDescriptor,
       session.category,
       session.ethnicity,
-      referenceBuffers
+      referenceBuffers,
+      session.customPrompts || {}
     );
 
     // Store results (temporarily in memory, not yet uploaded to Drive)
@@ -332,11 +337,12 @@ app.post('/api/regenerate/:sessionId/:perspectiveId', requireAuth, async (req, r
     const referenceBuffer = session.rawImages[0].buffer;
 
     const result = await imageGenerator.regenerateImage(
-      customPrompt || session.visualDescriptor,
+      session.visualDescriptor,
       session.category,
       session.ethnicity,
       perspectiveId,
-      referenceBuffer
+      referenceBuffer,
+      customPrompt || null
     );
 
     // Update the specific image in session
@@ -507,23 +513,48 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Get prompts for a category
+// Get prompts for a category (with session context for full prompts)
 app.get('/api/prompts/:category', requireAuth, (req, res) => {
   const { category } = req.params;
+  const { sessionId } = req.query;
   const categoryPrompts = PROMPTS[category];
 
   if (!categoryPrompts) {
     return res.status(404).json({ error: 'Category not found' });
   }
 
-  const perspectives = categoryPrompts.perspectives.map(p => ({
-    id: p.id,
-    name: p.name,
-    imageNumber: p.imageNumber,
-    prompt: p.prompt
-  }));
+  // Get session for visual descriptor and ethnicity
+  let visualDescriptor = '[Visual descriptor vil bli generert fra bildene dine]';
+  let ethnicity = 'random';
 
-  res.json({ category, perspectives });
+  if (sessionId) {
+    const session = activeSessions.get(sessionId);
+    if (session) {
+      visualDescriptor = session.visualDescriptor || visualDescriptor;
+      ethnicity = session.ethnicity || ethnicity;
+    }
+  }
+
+  const { buildFullPrompt, ETHNICITY_MODIFIERS } = require('./config/prompts');
+
+  const perspectives = categoryPrompts.perspectives.map(p => {
+    const fullPrompt = buildFullPrompt(
+      visualDescriptor,
+      p.prompt,
+      ethnicity,
+      p.requiresModel
+    );
+
+    return {
+      id: p.id,
+      name: p.name,
+      imageNumber: p.imageNumber || categoryPrompts.perspectives.indexOf(p) + 1,
+      requiresModel: p.requiresModel,
+      prompt: fullPrompt
+    };
+  });
+
+  res.json({ category, perspectives, visualDescriptor, ethnicity });
 });
 
 // =============================================================================

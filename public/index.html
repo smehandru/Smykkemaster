@@ -1341,14 +1341,14 @@
         return;
       }
 
-      // Fetch prompts for current category
+      // Fetch prompts for current category with session context
       try {
-        const res = await fetch(`/api/prompts/${currentSession.category}`);
+        const res = await fetch(`/api/prompts/${currentSession.category}?sessionId=${currentSession.id}`);
         const data = await res.json();
 
         if (data.perspectives) {
           perspectivesList = data.perspectives;
-          renderPromptModal(data.perspectives);
+          renderPromptModal(data.perspectives, data.visualDescriptor);
           document.getElementById('promptModal').classList.remove('hidden');
         }
       } catch (error) {
@@ -1357,12 +1357,19 @@
       }
     }
 
-    function renderPromptModal(perspectives) {
+    function renderPromptModal(perspectives, visualDescriptor) {
       const body = document.getElementById('promptModalBody');
 
-      body.innerHTML = perspectives.map((p, index) => `
+      const headerHtml = visualDescriptor ? `
+        <div class="prompt-item" style="background: var(--bg-dark); padding: 1rem; border-radius: 4px; margin-bottom: 1.5rem;">
+          <label style="color: var(--gold);">Global Visual Descriptor (fra Gemini)</label>
+          <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.5rem; white-space: pre-wrap;">${visualDescriptor}</p>
+        </div>
+      ` : '';
+
+      body.innerHTML = headerHtml + perspectives.map((p, index) => `
         <div class="prompt-item">
-          <label>Bilde ${p.imageNumber}: ${p.name}</label>
+          <label>Bilde ${p.imageNumber}: ${p.name} ${p.requiresModel ? '(med modell)' : ''}</label>
           <textarea id="prompt_${p.id}" data-perspective-id="${p.id}">${customPrompts[p.id] || p.prompt}</textarea>
         </div>
       `).join('');
