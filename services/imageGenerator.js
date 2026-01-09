@@ -1,4 +1,6 @@
-const { VertexAI } = require('@google-cloud/vertexai');
+const aiplatform = require('@google-cloud/aiplatform');
+const { PredictionServiceClient } = aiplatform.v1;
+const { helpers } = aiplatform;
 const path = require('path');
 const fs = require('fs');
 const { buildFullPrompt, PROMPTS } = require('../config/prompts');
@@ -17,12 +19,12 @@ function setupCredentials() {
   }
 }
 
-// Rate limiting configuration for hobby use (1-2 users, ~50 images/session)
+// Rate limiting configuration
 const RATE_LIMIT = {
-  maxConcurrent: 2,           // Max 2 concurrent image generations
-  delayBetweenRequests: 3000, // 3 second delay between requests (Nano Banana Pro ~3-8s per image)
+  maxConcurrent: 2,
+  delayBetweenRequests: 3000,
   maxRetries: 3,
-  retryDelay: 8000            // 8 second retry delay for rate limits
+  retryDelay: 8000
 };
 
 let activeRequests = 0;
@@ -51,147 +53,84 @@ async function processQueue() {
     reject(error);
   } finally {
     activeRequests--;
-    // Delay before processing next request
     setTimeout(() => processQueue(), RATE_LIMIT.delayBetweenRequests);
   }
 }
 
-// Initialize Vertex AI for Nano Banana Pro image generation
-let vertexAI = null;
-let nanoBananaProModel = null;
+// Initialize Prediction Service Client for Imagen 4
+let predictionClient = null;
 
-function initializeNanoBananaPro() {
-  if (!vertexAI) {
+function initializePredictionClient() {
+  if (!predictionClient) {
     setupCredentials();
-    vertexAI = new VertexAI({
-      project: PROJECT_ID,
-      location: LOCATION
-    });
-
-    // Nano Banana Pro = Gemini 3 Pro Image Preview
-    // This model excels at:
-    // - 2K/4K image generation
-    // - Accurate text rendering
-    // - Following complex prompts
-    // - Image-to-image with reference preservation
-    nanoBananaProModel = vertexAI.getGenerativeModel({
-      model: 'gemini-2.0-flash-exp', // Fallback - update to 'gemini-3-pro-image-preview' when available in your region
-      generationConfig: {
-        responseModalities: ['image', 'text'],
-      }
+    predictionClient = new PredictionServiceClient({
+      apiEndpoint: `${LOCATION}-aiplatform.googleapis.com`
     });
   }
-  return nanoBananaProModel;
+  return predictionClient;
 }
 
-// Try to get Nano Banana Pro model, with fallback options
-async function getImageModel() {
-  if (!vertexAI) {
-    vertexAI = new VertexAI({
-      project: PROJECT_ID,
-      location: LOCATION
-    });
-  }
-
-  // Model priority (try in order):
-  // 1. gemini-3-pro-image-preview (Nano Banana Pro) - best quality
-  // 2. gemini-2.0-flash-exp - good quality, faster
-  // 3. imagen-3.0-generate-002 - alternative
-
-  const modelOptions = [
-    'gemini-2.0-flash-exp',  // Currently most widely available with image output
-    // 'gemini-3-pro-image-preview', // Nano Banana Pro - uncomment when available
-  ];
-
-  for (const modelName of modelOptions) {
-    try {
-      const model = vertexAI.getGenerativeModel({
-        model: modelName,
-        generationConfig: {
-          responseModalities: ['image', 'text'],
-        }
-      });
-      console.log(`Using image model: ${modelName}`);
-      return model;
-    } catch (error) {
-      console.warn(`Model ${modelName} not available, trying next...`);
-    }
-  }
-
-  throw new Error('No image generation model available');
-}
-
-// Generate a single image with Nano Banana Pro
+// Generate a single image with Imagen 4
 async function generateSingleImage(prompt, referenceImageBuffer, retries = RATE_LIMIT.maxRetries) {
   return enqueueRequest(async () => {
-    const model = initializeNanoBananaPro();
+    const client = initializePredictionClient();
 
-    const parts = [];
-
-    // Add reference image first (important for image-to-image)
-    if (referenceImageBuffer) {
-      parts.push({
-        inlineData: {
-          mimeType: 'image/jpeg',
-          data: referenceImageBuffer.toString('base64')
-        }
-      });
-      // Add instruction to use reference
-      parts.push({
-        text: `Using the jewelry image above as the exact reference, ${prompt}`
-      });
-    } else {
-      parts.push({ text: prompt });
-    }
+    // Imagen 4 model endpoint
+    const endpoint = `projects/${PROJECT_ID}/locations/${LOCATION}/publishers/google/models/imagen-3.0-generate-002`;
 
     try {
-      const request = {
-        contents: [{ role: 'user', parts }],
-        generationConfig: {
-          responseModalities: ['image'],
-          // Nano Banana Pro settings for 2K output
-          candidateCount: 1,
-        },
-        safetySettings: [
-          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
-          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
-          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
-          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
-        ]
-      };
-
-      console.log('Sending request to Nano Banana Pro...');
+      console.log('Sending request to Imagen 4...');
       const startTime = Date.now();
 
-      const response = await model.generateContent(request);
-      const result = response.response;
+      // Build the request for Imagen 4
+      const instanceValue = {
+        prompt: prompt
+      };
+
+      // Add reference image if provided (for image-to-image)
+      if (referenceImageBuffer) {
+        instanceValue.image = {
+          bytesBase64Encoded: referenceImageBuffer.toString('base64')
+        };
+      }
+
+      const instance = helpers.toValue(instanceValue);
+
+      const parameters = helpers.toValue({
+        sampleCount: 1,
+        aspectRatio: '1:1',
+        safetyFilterLevel: 'block_few',
+        personGeneration: 'allow_adult',
+        outputOptions: {
+          mimeType: 'image/jpeg',
+          compressionQuality: 95
+        }
+      });
+
+      const request = {
+        endpoint,
+        instances: [instance],
+        parameters
+      };
+
+      const [response] = await client.predict(request);
 
       const duration = ((Date.now() - startTime) / 1000).toFixed(1);
       console.log(`Image generated in ${duration}s`);
 
       // Extract generated image from response
-      if (result.candidates && result.candidates[0]) {
-        const candidate = result.candidates[0];
-        if (candidate.content && candidate.content.parts) {
-          for (const part of candidate.content.parts) {
-            if (part.inlineData && part.inlineData.data) {
-              return {
-                success: true,
-                imageBuffer: Buffer.from(part.inlineData.data, 'base64'),
-                mimeType: part.inlineData.mimeType || 'image/jpeg',
-                generationTime: duration
-              };
-            }
-          }
-        }
-      }
+      if (response.predictions && response.predictions.length > 0) {
+        const prediction = response.predictions[0];
+        const structValue = prediction.structValue;
 
-      // Check for text response (might contain error or explanation)
-      if (result.candidates && result.candidates[0]?.content?.parts) {
-        for (const part of result.candidates[0].content.parts) {
-          if (part.text) {
-            console.log('Model response text:', part.text);
-          }
+        if (structValue && structValue.fields && structValue.fields.bytesBase64Encoded) {
+          const imageBase64 = structValue.fields.bytesBase64Encoded.stringValue;
+          return {
+            success: true,
+            imageBuffer: Buffer.from(imageBase64, 'base64'),
+            mimeType: 'image/jpeg',
+            generationTime: duration
+          };
         }
       }
 
@@ -229,7 +168,7 @@ async function generateAllPerspectives(visualDescriptor, category, ethnicity, re
   // Use the first/best reference image for all generations
   const referenceBuffer = referenceImageBuffers[0];
 
-  console.log(`\n=== Starting image generation for ${categoryPrompts.name} ===`);
+  console.log(`\n=== Starting Imagen 4 generation for ${categoryPrompts.name} ===`);
   console.log(`Visual descriptor: ${visualDescriptor.substring(0, 100)}...`);
   console.log(`Ethnicity: ${ethnicity}`);
   console.log(`Custom prompts provided: ${Object.keys(customPrompts).length}`);

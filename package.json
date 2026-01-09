@@ -8,6 +8,7 @@
     "dev": "node --watch server.js"
   },
   "dependencies": {
+    "@google-cloud/aiplatform": "^3.0.0",
     "@google-cloud/vertexai": "^1.9.0",
     "express": "^4.21.0",
     "googleapis": "^144.0.0",
