@@ -334,14 +334,15 @@ app.post('/api/regenerate/:sessionId/:perspectiveId', requireAuth, async (req, r
   const { customPrompt } = req.body;
 
   try {
-    const referenceBuffer = session.rawImages[0].buffer;
+    // Use ALL reference images for regeneration
+    const referenceBuffers = session.rawImages.map(img => img.buffer);
 
     const result = await imageGenerator.regenerateImage(
       session.visualDescriptor,
       session.category,
       session.ethnicity,
       perspectiveId,
-      referenceBuffer,
+      referenceBuffers,
       customPrompt || null
     );
 

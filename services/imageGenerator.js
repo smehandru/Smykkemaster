@@ -79,23 +79,27 @@ function initializeNanoBananaPro() {
 }
 
 // Generate a single image with Nano Banana Pro
-async function generateSingleImage(prompt, referenceImageBuffer, retries = RATE_LIMIT.maxRetries) {
+async function generateSingleImage(prompt, referenceImageBuffers, retries = RATE_LIMIT.maxRetries) {
   return enqueueRequest(async () => {
     const model = initializeNanoBananaPro();
 
     const parts = [];
 
-    // Add reference image first (important for image-to-image)
-    if (referenceImageBuffer) {
+    // Add ALL reference images first (important for image-to-image)
+    // This allows the model to see the jewelry from multiple angles
+    if (referenceImageBuffers && referenceImageBuffers.length > 0) {
+      for (let i = 0; i < referenceImageBuffers.length; i++) {
+        parts.push({
+          inlineData: {
+            mimeType: 'image/jpeg',
+            data: referenceImageBuffers[i].toString('base64')
+          }
+        });
+      }
+      // Add instruction to use all reference images
+      const imageCount = referenceImageBuffers.length;
       parts.push({
-        inlineData: {
-          mimeType: 'image/jpeg',
-          data: referenceImageBuffer.toString('base64')
-        }
-      });
-      // Add instruction to use reference
-      parts.push({
-        text: `Using the jewelry image above as the exact reference, ${prompt}`
+        text: `Using the ${imageCount} jewelry image${imageCount > 1 ? 's' : ''} above as exact reference (showing the piece from ${imageCount > 1 ? 'multiple angles' : 'one angle'}), ${prompt}`
       });
     } else {
       parts.push({ text: prompt });
@@ -182,10 +186,8 @@ async function generateAllPerspectives(visualDescriptor, category, ethnicity, re
   const results = [];
   const perspectives = categoryPrompts.perspectives;
 
-  // Use the first/best reference image for all generations
-  const referenceBuffer = referenceImageBuffers[0];
-
   console.log(`\n=== Starting Nano Banana Pro generation for ${categoryPrompts.name} ===`);
+  console.log(`Reference images: ${referenceImageBuffers.length} (all will be used)`);
   console.log(`Visual descriptor: ${visualDescriptor.substring(0, 100)}...`);
   console.log(`Ethnicity: ${ethnicity}`);
   console.log(`Custom prompts provided: ${Object.keys(customPrompts).length}`);
@@ -210,7 +212,8 @@ async function generateAllPerspectives(visualDescriptor, category, ethnicity, re
     }
 
     try {
-      const result = await generateSingleImage(fullPrompt, referenceBuffer);
+      // Pass ALL reference images to the model
+      const result = await generateSingleImage(fullPrompt, referenceImageBuffers);
       results.push({
         perspectiveId: perspective.id,
         perspectiveName: perspective.name,
@@ -237,7 +240,7 @@ async function generateAllPerspectives(visualDescriptor, category, ethnicity, re
 }
 
 // Regenerate a specific image
-async function regenerateImage(visualDescriptor, category, ethnicity, perspectiveId, referenceImageBuffer, customPrompt = null) {
+async function regenerateImage(visualDescriptor, category, ethnicity, perspectiveId, referenceImageBuffers, customPrompt = null) {
   const categoryPrompts = PROMPTS[category];
   if (!categoryPrompts) {
     throw new Error(`Unknown category: ${category}`);
@@ -249,6 +252,7 @@ async function regenerateImage(visualDescriptor, category, ethnicity, perspectiv
   }
 
   console.log(`Regenerating: ${perspective.name}${customPrompt ? ' (with custom prompt)' : ''}`);
+  console.log(`Using ${referenceImageBuffers.length} reference image(s)`);
 
   // Use custom prompt if provided, otherwise build default
   const fullPrompt = customPrompt || buildFullPrompt(
@@ -258,7 +262,8 @@ async function regenerateImage(visualDescriptor, category, ethnicity, perspectiv
     perspective.requiresModel
   );
 
-  const result = await generateSingleImage(fullPrompt, referenceImageBuffer);
+  // Pass ALL reference images to the model
+  const result = await generateSingleImage(fullPrompt, referenceImageBuffers);
   return {
     perspectiveId: perspective.id,
     perspectiveName: perspective.name,
