@@ -1,6 +1,4 @@
-const aiplatform = require('@google-cloud/aiplatform');
-const { PredictionServiceClient } = aiplatform.v1;
-const { helpers } = aiplatform;
+const { VertexAI } = require('@google-cloud/vertexai');
 const path = require('path');
 const fs = require('fs');
 const { buildFullPrompt, PROMPTS } = require('../config/prompts');
@@ -57,80 +55,99 @@ async function processQueue() {
   }
 }
 
-// Initialize Prediction Service Client for Imagen 4
-let predictionClient = null;
+// Initialize Vertex AI for Nano Banana Pro
+let vertexAI = null;
+let nanoBananaProModel = null;
 
-function initializePredictionClient() {
-  if (!predictionClient) {
+function initializeNanoBananaPro() {
+  if (!vertexAI) {
     setupCredentials();
-    predictionClient = new PredictionServiceClient({
-      apiEndpoint: `${LOCATION}-aiplatform.googleapis.com`
+    vertexAI = new VertexAI({
+      project: PROJECT_ID,
+      location: LOCATION
+    });
+
+    // Nano Banana Pro = gemini-2.0-flash-exp with image output
+    nanoBananaProModel = vertexAI.getGenerativeModel({
+      model: 'gemini-2.0-flash-exp',
+      generationConfig: {
+        responseModalities: ['image', 'text'],
+      }
     });
   }
-  return predictionClient;
+  return nanoBananaProModel;
 }
 
-// Generate a single image with Imagen 4
+// Generate a single image with Nano Banana Pro
 async function generateSingleImage(prompt, referenceImageBuffer, retries = RATE_LIMIT.maxRetries) {
   return enqueueRequest(async () => {
-    const client = initializePredictionClient();
+    const model = initializeNanoBananaPro();
 
-    // Imagen 4 model endpoint
-    const endpoint = `projects/${PROJECT_ID}/locations/${LOCATION}/publishers/google/models/imagen-3.0-generate-002`;
+    const parts = [];
 
-    try {
-      console.log('Sending request to Imagen 4...');
-      const startTime = Date.now();
-
-      // Build the request for Imagen 4
-      const instanceValue = {
-        prompt: prompt
-      };
-
-      // Add reference image if provided (for image-to-image)
-      if (referenceImageBuffer) {
-        instanceValue.image = {
-          bytesBase64Encoded: referenceImageBuffer.toString('base64')
-        };
-      }
-
-      const instance = helpers.toValue(instanceValue);
-
-      const parameters = helpers.toValue({
-        sampleCount: 1,
-        aspectRatio: '1:1',
-        safetyFilterLevel: 'block_few',
-        personGeneration: 'allow_adult',
-        outputOptions: {
+    // Add reference image first (important for image-to-image)
+    if (referenceImageBuffer) {
+      parts.push({
+        inlineData: {
           mimeType: 'image/jpeg',
-          compressionQuality: 95
+          data: referenceImageBuffer.toString('base64')
         }
       });
+      // Add instruction to use reference
+      parts.push({
+        text: `Using the jewelry image above as the exact reference, ${prompt}`
+      });
+    } else {
+      parts.push({ text: prompt });
+    }
 
+    try {
       const request = {
-        endpoint,
-        instances: [instance],
-        parameters
+        contents: [{ role: 'user', parts }],
+        generationConfig: {
+          responseModalities: ['image'],
+          candidateCount: 1,
+        },
+        safetySettings: [
+          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
+          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
+          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
+          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
+        ]
       };
 
-      const [response] = await client.predict(request);
+      console.log('Sending request to Nano Banana Pro...');
+      const startTime = Date.now();
+
+      const response = await model.generateContent(request);
+      const result = response.response;
 
       const duration = ((Date.now() - startTime) / 1000).toFixed(1);
       console.log(`Image generated in ${duration}s`);
 
       // Extract generated image from response
-      if (response.predictions && response.predictions.length > 0) {
-        const prediction = response.predictions[0];
-        const structValue = prediction.structValue;
+      if (result.candidates && result.candidates[0]) {
+        const candidate = result.candidates[0];
+        if (candidate.content && candidate.content.parts) {
+          for (const part of candidate.content.parts) {
+            if (part.inlineData && part.inlineData.data) {
+              return {
+                success: true,
+                imageBuffer: Buffer.from(part.inlineData.data, 'base64'),
+                mimeType: part.inlineData.mimeType || 'image/jpeg',
+                generationTime: duration
+              };
+            }
+          }
+        }
+      }
 
-        if (structValue && structValue.fields && structValue.fields.bytesBase64Encoded) {
-          const imageBase64 = structValue.fields.bytesBase64Encoded.stringValue;
-          return {
-            success: true,
-            imageBuffer: Buffer.from(imageBase64, 'base64'),
-            mimeType: 'image/jpeg',
-            generationTime: duration
-          };
+      // Check for text response (might contain error or explanation)
+      if (result.candidates && result.candidates[0]?.content?.parts) {
+        for (const part of result.candidates[0].content.parts) {
+          if (part.text) {
+            console.log('Model response text:', part.text);
+          }
         }
       }
 
@@ -168,7 +185,7 @@ async function generateAllPerspectives(visualDescriptor, category, ethnicity, re
   // Use the first/best reference image for all generations
   const referenceBuffer = referenceImageBuffers[0];
 
-  console.log(`\n=== Starting Imagen 4 generation for ${categoryPrompts.name} ===`);
+  console.log(`\n=== Starting Nano Banana Pro generation for ${categoryPrompts.name} ===`);
   console.log(`Visual descriptor: ${visualDescriptor.substring(0, 100)}...`);
   console.log(`Ethnicity: ${ethnicity}`);
   console.log(`Custom prompts provided: ${Object.keys(customPrompts).length}`);
