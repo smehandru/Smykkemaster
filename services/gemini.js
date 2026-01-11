@@ -19,7 +19,8 @@ function setupCredentials() {
 
 // Initialize Vertex AI
 let vertexAI = null;
-let generativeModel = null;
+let fastModel = null;  // For quick tasks like tag extraction
+let thinkingModel = null;  // For complex reasoning like visual descriptors
 
 function initializeVertexAI() {
   if (!vertexAI) {
@@ -29,16 +30,37 @@ function initializeVertexAI() {
       location: LOCATION
     });
 
-    generativeModel = vertexAI.getGenerativeModel({
+    // Fast model for simple extractions
+    fastModel = vertexAI.getGenerativeModel({
       model: 'gemini-2.0-flash-001'
     });
+
+    // Gemini 2.5 Pro with thinking "high" for better prompt generation
+    thinkingModel = vertexAI.getGenerativeModel({
+      model: 'gemini-2.5-pro-preview-06-05',
+      generationConfig: {
+        thinkingConfig: {
+          thinkingBudget: 8192  // "high" thinking budget
+        }
+      }
+    });
   }
-  return generativeModel;
+  return { fastModel, thinkingModel };
 }
 
-// Extract tag information from jewelry images
+function getFastModel() {
+  initializeVertexAI();
+  return fastModel;
+}
+
+function getThinkingModel() {
+  initializeVertexAI();
+  return thinkingModel;
+}
+
+// Extract tag information from jewelry images (uses fast model)
 async function extractTagInfo(imageBuffers) {
-  const model = initializeVertexAI();
+  const model = getFastModel();
 
   // Convert buffers to base64 inline data
   const imageParts = imageBuffers.map(buffer => ({
@@ -93,9 +115,10 @@ Hvis du ikke kan finne informasjonen, sett "found" til false.`;
   }
 }
 
-// Generate visual descriptor for the jewelry
+// Generate visual descriptor for the jewelry (uses thinking model for better quality)
 async function generateVisualDescriptor(imageBuffers, category) {
-  const model = initializeVertexAI();
+  const model = getThinkingModel();
+  console.log('Using Gemini 2.5 Pro with thinking for visual descriptor generation...');
 
   const imageParts = imageBuffers.map(buffer => ({
     inlineData: {
@@ -140,16 +163,28 @@ Return ONLY the visual descriptor text, nothing else. Make it 2-3 sentences, det
 
     const response = await model.generateContent(request);
     const result = response.response;
-    return result.candidates[0].content.parts[0].text.trim();
+
+    // Extract text from thinking model response (filter out thinking parts)
+    const parts = result.candidates[0].content.parts;
+    let textContent = '';
+    for (const part of parts) {
+      // Skip thinking content, only get actual text response
+      if (part.text && !part.thought) {
+        textContent = part.text;
+      }
+    }
+
+    console.log('Visual descriptor generated with Gemini 2.5 Pro thinking');
+    return textContent.trim();
   } catch (error) {
     console.error('Gemini visual descriptor error:', error);
     return `A beautiful 22 karat gold ${categoryNames[category] || 'jewelry piece'} with traditional craftsmanship and polished finish.`;
   }
 }
 
-// Generate product description
+// Generate product description (uses fast model for quick responses)
 async function generateProductDescription(imageBuffers, category, tagInfo) {
-  const model = initializeVertexAI();
+  const model = getFastModel();
 
   const imageParts = imageBuffers.map(buffer => ({
     inlineData: {
