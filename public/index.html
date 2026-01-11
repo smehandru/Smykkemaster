@@ -1292,6 +1292,10 @@
     }
 
     function showAnalysisResults(data) {
+      console.log('Analysis data received:', data);
+      console.log('TagInfo:', data.tagInfo);
+      console.log('VisualDescriptor:', data.visualDescriptor);
+
       const section = document.getElementById('analysisSection');
       section.classList.remove('hidden');
 
