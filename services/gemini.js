@@ -19,8 +19,7 @@ function setupCredentials() {
 
 // Initialize Vertex AI
 let vertexAI = null;
-let fastModel = null;  // For quick tasks like tag extraction
-let thinkingModel = null;  // For complex reasoning like visual descriptors
+let generativeModel = null;
 
 function initializeVertexAI() {
   if (!vertexAI) {
@@ -30,37 +29,16 @@ function initializeVertexAI() {
       location: LOCATION
     });
 
-    // Fast model for simple extractions
-    fastModel = vertexAI.getGenerativeModel({
-      model: 'gemini-2.0-flash-001'
-    });
-
-    // Gemini 3 Pro Preview with thinking "high" for better prompt generation
-    thinkingModel = vertexAI.getGenerativeModel({
-      model: 'gemini-3.0-pro-preview',
-      generationConfig: {
-        thinkingConfig: {
-          thinkingBudget: 8192  // "high" thinking budget
-        }
-      }
+    generativeModel = vertexAI.getGenerativeModel({
+      model: 'gemini-2.0-flash-exp'
     });
   }
-  return { fastModel, thinkingModel };
+  return generativeModel;
 }
 
-function getFastModel() {
-  initializeVertexAI();
-  return fastModel;
-}
-
-function getThinkingModel() {
-  initializeVertexAI();
-  return thinkingModel;
-}
-
-// Extract tag information from jewelry images (uses fast model)
+// Extract tag information from jewelry images
 async function extractTagInfo(imageBuffers) {
-  const model = getFastModel();
+  const model = initializeVertexAI();
 
   // Convert buffers to base64 inline data
   const imageParts = imageBuffers.map(buffer => ({
@@ -115,10 +93,9 @@ Hvis du ikke kan finne informasjonen, sett "found" til false.`;
   }
 }
 
-// Generate visual descriptor for the jewelry (uses thinking model for better quality)
+// Generate visual descriptor for the jewelry
 async function generateVisualDescriptor(imageBuffers, category) {
-  const model = getThinkingModel();
-  console.log('Using Gemini 3 Pro Preview with thinking for visual descriptor generation...');
+  const model = initializeVertexAI();
 
   const imageParts = imageBuffers.map(buffer => ({
     inlineData: {
@@ -139,17 +116,20 @@ async function generateVisualDescriptor(imageBuffers, category) {
 
 Analyze these images of a ${categoryNames[category] || 'jewelry piece'} in 22 karat gold.
 
-Create a detailed VISUAL DESCRIPTOR that captures:
-1. The exact design, shape, and style of the jewelry
-2. Surface texture and finish (polished, matte, hammered, etc.)
-3. Any decorative elements, patterns, or engravings
-4. Chain style/thickness if applicable
-5. Stone settings if any
-6. Overall aesthetic (modern, traditional, ethnic, minimalist, ornate, etc.)
+Create a COMPREHENSIVE and DETAILED VISUAL DESCRIPTOR that captures EVERY visual aspect:
 
-The descriptor should be written in English, be specific enough that an AI image generator can recreate this EXACT piece. Focus on visual characteristics only - no dimensions or weight.
+1. SHAPE & FORM: Exact silhouette, proportions, thickness, curvature, symmetry
+2. SURFACE FINISH: Polished/matte/satin/hammered/brushed/textured - describe precisely
+3. DECORATIVE ELEMENTS: All patterns, filigree work, engravings, cutouts, borders, edges
+4. METALWORK DETAILS: Rope twists, beading, granulation, milgrain, geometric patterns
+5. STONE SETTINGS (if any): Stone type, cut, color, setting style, arrangement
+6. CHAIN/BAND DETAILS (if applicable): Link style, width, clasp type, weave pattern
+7. CULTURAL/STYLE ELEMENTS: Traditional motifs, ethnic influences, regional design characteristics
+8. UNIQUE FEATURES: Any distinctive elements that make this piece recognizable
 
-Return ONLY the visual descriptor text, nothing else. Make it 2-3 sentences, detailed but concise.`;
+Write in English. Be EXHAUSTIVE and SPECIFIC - describe every visible detail so an AI image generator can recreate this EXACT piece with perfect accuracy. Include color tones of the gold (yellow/rose/warm).
+
+Return 4-6 detailed sentences covering all visual characteristics. No dimensions or weight.`;
 
   try {
     const request = {
@@ -163,28 +143,16 @@ Return ONLY the visual descriptor text, nothing else. Make it 2-3 sentences, det
 
     const response = await model.generateContent(request);
     const result = response.response;
-
-    // Extract text from thinking model response (filter out thinking parts)
-    const parts = result.candidates[0].content.parts;
-    let textContent = '';
-    for (const part of parts) {
-      // Skip thinking content, only get actual text response
-      if (part.text && !part.thought) {
-        textContent = part.text;
-      }
-    }
-
-    console.log('Visual descriptor generated with Gemini 3 Pro thinking');
-    return textContent.trim();
+    return result.candidates[0].content.parts[0].text.trim();
   } catch (error) {
     console.error('Gemini visual descriptor error:', error);
     return `A beautiful 22 karat gold ${categoryNames[category] || 'jewelry piece'} with traditional craftsmanship and polished finish.`;
   }
 }
 
-// Generate product description (uses fast model for quick responses)
+// Generate product description
 async function generateProductDescription(imageBuffers, category, tagInfo) {
-  const model = getFastModel();
+  const model = initializeVertexAI();
 
   const imageParts = imageBuffers.map(buffer => ({
     inlineData: {
