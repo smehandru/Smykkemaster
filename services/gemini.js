@@ -30,7 +30,7 @@ function initializeVertexAI() {
     });
 
     generativeModel = vertexAI.getGenerativeModel({
-      model: 'gemini-2.0-flash-exp'
+      model: 'gemini-2.0-flash-001'
     });
   }
   return generativeModel;
