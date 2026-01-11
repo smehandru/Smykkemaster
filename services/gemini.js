@@ -35,9 +35,9 @@ function initializeVertexAI() {
       model: 'gemini-2.0-flash-001'
     });
 
-    // Gemini 2.5 Pro with thinking "high" for better prompt generation
+    // Gemini 3 Pro Preview with thinking "high" for better prompt generation
     thinkingModel = vertexAI.getGenerativeModel({
-      model: 'gemini-2.5-pro-preview-06-05',
+      model: 'gemini-3.0-pro-preview',
       generationConfig: {
         thinkingConfig: {
           thinkingBudget: 8192  // "high" thinking budget
@@ -118,7 +118,7 @@ Hvis du ikke kan finne informasjonen, sett "found" til false.`;
 // Generate visual descriptor for the jewelry (uses thinking model for better quality)
 async function generateVisualDescriptor(imageBuffers, category) {
   const model = getThinkingModel();
-  console.log('Using Gemini 2.5 Pro with thinking for visual descriptor generation...');
+  console.log('Using Gemini 3 Pro Preview with thinking for visual descriptor generation...');
 
   const imageParts = imageBuffers.map(buffer => ({
     inlineData: {
@@ -174,7 +174,7 @@ Return ONLY the visual descriptor text, nothing else. Make it 2-3 sentences, det
       }
     }
 
-    console.log('Visual descriptor generated with Gemini 2.5 Pro thinking');
+    console.log('Visual descriptor generated with Gemini 3 Pro thinking');
     return textContent.trim();
   } catch (error) {
     console.error('Gemini visual descriptor error:', error);
