@@ -185,6 +185,9 @@ async function analyzeImages(session) {
     console.log(`Analyzing ${imageBuffers.length} images for session ${session.id}`);
     const analysis = await gemini.analyzeJewelryImages(imageBuffers, session.category);
 
+    console.log('Tag extraction result:', JSON.stringify(analysis.tagInfo, null, 2));
+    console.log('Visual descriptor:', analysis.visualDescriptor);
+
     session.tagInfo = analysis.tagInfo;
     session.visualDescriptor = analysis.visualDescriptor;
     session.productDescription = analysis.productDescription;

@@ -48,23 +48,30 @@ async function extractTagInfo(imageBuffers) {
     }
   }));
 
-  const prompt = `Analyser disse smykkebildene nøye. På hvert smykke er det festet en tag/etikett med 3 rader med informasjon:
+  const prompt = `OPPGAVE: Finn og les informasjonen på den lille papir-taggen/etiketten som henger på smykket.
 
-Rad 1: Vekt i gram (et tall, kan ha desimaler)
-Rad 2: Arbeidskostnad (et tall, ignorer eventuelt + tegn foran)
-Rad 3: Produkt-ID (en unik identifikator/kode)
+SE NØYE på bildene. Det er en liten hvit/beige papir-tag festet til smykket med en tråd eller snor. Taggen inneholder HÅNDSKREVET eller TRYKT tekst med 3 linjer:
 
-Finn og returner denne informasjonen. Hvis informasjonen finnes i et av bildene, er det ikke nødvendig å gjenta fra andre bilder.
+LINJE 1: Vekt i gram (f.eks. "2.5", "3.75", "10.2")
+LINJE 2: Arbeidskostnad/making charge (f.eks. "150", "+200", "350")
+LINJE 3: Produkt-ID/kode (f.eks. "ABC123", "R-456", "NK2024")
 
-Returner resultatet NØYAKTIG i dette JSON-formatet (ingen annen tekst):
+VIKTIG:
+- Zoom inn mentalt på taggen/etiketten
+- Les NØYAKTIG det som står - ikke gjett
+- Taggen kan være liten, men informasjonen er der
+- Ignorer "+" tegn foran tall
+
+Returner KUN denne JSON (ingen annen tekst):
 {
-  "weight": "vekt i gram som tall",
-  "laborCost": "arbeidskostnad som tall",
-  "productId": "produkt-id som streng",
-  "found": true/false
+  "weight": "tallet fra linje 1",
+  "laborCost": "tallet fra linje 2",
+  "productId": "koden fra linje 3",
+  "found": true
 }
 
-Hvis du ikke kan finne informasjonen, sett "found" til false.`;
+Hvis du VIRKELIG ikke kan se/lese taggen, returner:
+{"weight": "", "laborCost": "", "productId": "", "found": false}`;
 
   try {
     const request = {
@@ -112,24 +119,23 @@ async function generateVisualDescriptor(imageBuffers, category) {
     'anheng': 'anheng/pendant'
   };
 
-  const prompt = `You are a luxury jewelry expert and image generation prompt specialist.
+  const prompt = `You are a master goldsmith describing a piece for exact replication.
 
-Analyze these images of a ${categoryNames[category] || 'jewelry piece'} in 22 karat gold.
+Analyze this ${categoryNames[category] || 'jewelry piece'} in 22 karat yellow gold. Describe it with EXTREME PRECISION:
 
-Create a COMPREHENSIVE and DETAILED VISUAL DESCRIPTOR that captures EVERY visual aspect:
+MANDATORY DETAILS TO INCLUDE:
+- EXACT SHAPE: Is it round, oval, rectangular, teardrop, heart, flower-shaped, geometric? Describe the precise outline.
+- SURFACE TREATMENT: Mirror-polished, satin-brushed, hammered texture, matte finish, or combination?
+- PATTERN/DESIGN: Describe EXACTLY what you see - are there leaves, flowers, geometric shapes, curves, swirls, lattice work, cutouts?
+- EDGE DETAILS: Smooth edges, scalloped, beaded border, rope border, milgrain?
+- TEXTURE ELEMENTS: Granulation (tiny gold balls), filigree (wire work), engraving, embossing, diamond-cut facets?
+- CENTER ELEMENT: What is the focal point? A stone, a motif, a symbol, plain surface?
+- If CHAIN: Describe link type (cable, rope, box, figaro, snake, curb) precisely
 
-1. SHAPE & FORM: Exact silhouette, proportions, thickness, curvature, symmetry
-2. SURFACE FINISH: Polished/matte/satin/hammered/brushed/textured - describe precisely
-3. DECORATIVE ELEMENTS: All patterns, filigree work, engravings, cutouts, borders, edges
-4. METALWORK DETAILS: Rope twists, beading, granulation, milgrain, geometric patterns
-5. STONE SETTINGS (if any): Stone type, cut, color, setting style, arrangement
-6. CHAIN/BAND DETAILS (if applicable): Link style, width, clasp type, weave pattern
-7. CULTURAL/STYLE ELEMENTS: Traditional motifs, ethnic influences, regional design characteristics
-8. UNIQUE FEATURES: Any distinctive elements that make this piece recognizable
+EXAMPLE OF GOOD DESCRIPTOR:
+"A round 22 karat yellow gold pendant with a domed, mirror-polished center surrounded by a ring of intricate filigree scrollwork. The outer edge features a delicate beaded border. The filigree creates a lace-like pattern of curved tendrils and small flower motifs. Surface has a warm, rich yellow gold color with high shine on raised areas."
 
-Write in English. Be EXHAUSTIVE and SPECIFIC - describe every visible detail so an AI image generator can recreate this EXACT piece with perfect accuracy. Include color tones of the gold (yellow/rose/warm).
-
-Return 4-6 detailed sentences covering all visual characteristics. No dimensions or weight.`;
+Now describe THIS piece with the same level of specific detail. Focus on what makes THIS piece unique and recognizable. No dimensions.`;
 
   try {
     const request = {
