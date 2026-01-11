@@ -533,7 +533,10 @@ app.get('/api/prompts/:category', requireAuth, (req, res) => {
 
   if (sessionId) {
     const session = activeSessions.get(sessionId);
+    console.log('Fetching prompts for session:', sessionId, 'Session found:', !!session);
     if (session) {
+      console.log('Session visualDescriptor:', session.visualDescriptor);
+      console.log('Session tagInfo:', session.tagInfo);
       visualDescriptor = session.visualDescriptor || visualDescriptor;
       ethnicity = session.ethnicity || ethnicity;
     }
