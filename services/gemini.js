@@ -1,9 +1,9 @@
-const { VertexAI } = require('@google-cloud/vertexai');
+const { GoogleGenAI } = require('@google/genai');
 const path = require('path');
 const fs = require('fs');
 
 const PROJECT_ID = process.env.GOOGLE_PROJECT_ID || 'project-bcb47e5a-1886-41ee-a91';
-const LOCATION = 'europe-west1';
+const LOCATION = 'us-central1'; // Global endpoint for Gemini 3
 
 // Setup credentials for Vertex AI
 function setupCredentials() {
@@ -17,52 +17,32 @@ function setupCredentials() {
   }
 }
 
-// Initialize Vertex AI
-let vertexAI = null;
-let fastModel = null;
-let thinkingModel = null;
+// Initialize Google GenAI with Vertex AI
+let genAI = null;
 
-function initializeVertexAI() {
-  if (!vertexAI) {
+function initializeGenAI() {
+  if (!genAI) {
     setupCredentials();
-    vertexAI = new VertexAI({
+    genAI = new GoogleGenAI({
+      vertexai: true,
       project: PROJECT_ID,
       location: LOCATION
     });
-
-    // Fast model for quick tasks (tag extraction, descriptions)
-    fastModel = vertexAI.getGenerativeModel({
-      model: 'gemini-2.0-flash-001'
-    });
-
-    // Thinking model for complex reasoning (visual descriptors, master prompts)
-    // Using gemini-2.0-flash-thinking-exp for enhanced reasoning
-    try {
-      thinkingModel = vertexAI.getGenerativeModel({
-        model: 'gemini-2.0-flash-thinking-exp-01-21',
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 4096
-        }
-      });
-    } catch (e) {
-      console.log('Thinking model not available, falling back to fast model');
-      thinkingModel = fastModel;
-    }
   }
-  return fastModel;
+  return genAI;
 }
 
-function getThinkingModel() {
-  initializeVertexAI();
-  return thinkingModel || fastModel;
-}
+// Fast model name for quick tasks
+const FAST_MODEL = 'gemini-2.0-flash-001';
 
-// Extract tag information from jewelry images
+// Thinking model with HIGH reasoning for complex tasks
+const THINKING_MODEL = 'gemini-3-pro-preview';
+
+// Extract tag information from jewelry images (uses fast model)
 async function extractTagInfo(imageBuffers) {
-  const model = initializeVertexAI();
+  const ai = initializeGenAI();
 
-  // Convert buffers to base64 inline data
+  // Convert buffers to base64 inline data parts
   const imageParts = imageBuffers.map(buffer => ({
     inlineData: {
       mimeType: 'image/jpeg',
@@ -96,18 +76,12 @@ Hvis du VIRKELIG ikke kan se/lese taggen, returner:
 {"weight": "", "laborCost": "", "productId": "", "found": false}`;
 
   try {
-    const request = {
-      contents: [
-        {
-          role: 'user',
-          parts: [...imageParts, { text: prompt }]
-        }
-      ]
-    };
+    const response = await ai.models.generateContent({
+      model: FAST_MODEL,
+      contents: [...imageParts, { text: prompt }]
+    });
 
-    const response = await model.generateContent(request);
-    const result = response.response;
-    const text = result.candidates[0].content.parts[0].text;
+    const text = response.text;
 
     // Parse JSON from response
     const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -122,9 +96,9 @@ Hvis du VIRKELIG ikke kan se/lese taggen, returner:
   }
 }
 
-// Generate visual descriptor for the jewelry (using thinking model for better reasoning)
+// Generate visual descriptor for the jewelry (uses Gemini 3 Pro with HIGH thinking)
 async function generateVisualDescriptor(imageBuffers, category) {
-  const model = getThinkingModel();
+  const ai = initializeGenAI();
 
   const imageParts = imageBuffers.map(buffer => ({
     inlineData: {
@@ -160,27 +134,36 @@ EXAMPLE OF GOOD DESCRIPTOR:
 Now describe THIS piece with the same level of specific detail. Focus on what makes THIS piece unique and recognizable. No dimensions.`;
 
   try {
-    const request = {
-      contents: [
-        {
-          role: 'user',
-          parts: [...imageParts, { text: prompt }]
+    const response = await ai.models.generateContent({
+      model: THINKING_MODEL,
+      contents: [...imageParts, { text: prompt }],
+      config: {
+        thinkingConfig: {
+          thinkingLevel: 'HIGH'
         }
-      ]
-    };
+      }
+    });
 
-    const response = await model.generateContent(request);
-    const result = response.response;
-    return result.candidates[0].content.parts[0].text.trim();
+    return response.text.trim();
   } catch (error) {
     console.error('Gemini visual descriptor error:', error);
-    return `A beautiful 22 karat gold ${categoryNames[category] || 'jewelry piece'} with traditional craftsmanship and polished finish.`;
+    // Fallback to fast model if thinking model fails
+    try {
+      const fallbackResponse = await ai.models.generateContent({
+        model: FAST_MODEL,
+        contents: [...imageParts, { text: prompt }]
+      });
+      return fallbackResponse.text.trim();
+    } catch (fallbackError) {
+      console.error('Fallback model also failed:', fallbackError);
+      return `A beautiful 22 karat gold ${categoryNames[category] || 'jewelry piece'} with traditional craftsmanship and polished finish.`;
+    }
   }
 }
 
-// Generate product description
+// Generate product description (uses fast model)
 async function generateProductDescription(imageBuffers, category, tagInfo) {
-  const model = initializeVertexAI();
+  const ai = initializeGenAI();
 
   const imageParts = imageBuffers.map(buffer => ({
     inlineData: {
@@ -217,18 +200,12 @@ Returner som JSON:
 Vær KONSIS - ikke skriv lange beskrivelser. Maksimalt 2 korte setninger.`;
 
   try {
-    const request = {
-      contents: [
-        {
-          role: 'user',
-          parts: [...imageParts, { text: prompt }]
-        }
-      ]
-    };
+    const response = await ai.models.generateContent({
+      model: FAST_MODEL,
+      contents: [...imageParts, { text: prompt }]
+    });
 
-    const response = await model.generateContent(request);
-    const result = response.response;
-    const text = result.candidates[0].content.parts[0].text;
+    const text = response.text;
 
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
@@ -248,9 +225,9 @@ Vær KONSIS - ikke skriv lange beskrivelser. Maksimalt 2 korte setninger.`;
   }
 }
 
-// Generate refined master prompt using thinking model
+// Generate refined master prompt using Gemini 3 Pro with HIGH thinking
 async function generateMasterPrompt(visualDescriptor, compositionPrompt, category) {
-  const model = getThinkingModel();
+  const ai = initializeGenAI();
 
   const categoryNames = {
     'ring': 'ring',
@@ -286,33 +263,30 @@ Return ONLY the final prompt text, nothing else. The prompt should be a single f
 Make it detailed enough that an AI could generate the exact image described. Focus on photorealistic, editorial quality output.`;
 
   try {
-    const request = {
-      contents: [
-        {
-          role: 'user',
-          parts: [{ text: prompt }]
+    const response = await ai.models.generateContent({
+      model: THINKING_MODEL,
+      contents: [{ text: prompt }],
+      config: {
+        thinkingConfig: {
+          thinkingLevel: 'HIGH'
         }
-      ]
-    };
-
-    const response = await model.generateContent(request);
-    const result = response.response;
-
-    // Handle thinking model response (may have multiple parts)
-    const parts = result.candidates[0].content.parts;
-    // Get the last text part (thinking models put the answer at the end)
-    let masterPrompt = '';
-    for (const part of parts) {
-      if (part.text) {
-        masterPrompt = part.text;
       }
-    }
+    });
 
-    return masterPrompt.trim();
+    return response.text.trim();
   } catch (error) {
     console.error('Gemini master prompt generation error:', error);
-    // Fallback: combine the inputs manually
-    return `Ultra high-definition 2K luxury jewelry editorial photograph. ${visualDescriptor} ${compositionPrompt} Professional studio lighting, shallow depth of field, photorealistic quality.`;
+    // Fallback to fast model
+    try {
+      const fallbackResponse = await ai.models.generateContent({
+        model: FAST_MODEL,
+        contents: [{ text: prompt }]
+      });
+      return fallbackResponse.text.trim();
+    } catch (fallbackError) {
+      // Ultimate fallback: combine the inputs manually
+      return `Ultra high-definition 2K luxury jewelry editorial photograph. ${visualDescriptor} ${compositionPrompt} Professional studio lighting, shallow depth of field, photorealistic quality.`;
+    }
   }
 }
 
@@ -344,6 +318,5 @@ module.exports = {
   generateProductDescription,
   generateMasterPrompt,
   analyzeJewelryImages,
-  initializeVertexAI,
-  getThinkingModel
+  initializeGenAI
 };
