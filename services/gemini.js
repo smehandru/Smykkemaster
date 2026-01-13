@@ -19,7 +19,8 @@ function setupCredentials() {
 
 // Initialize Vertex AI
 let vertexAI = null;
-let generativeModel = null;
+let fastModel = null;
+let thinkingModel = null;
 
 function initializeVertexAI() {
   if (!vertexAI) {
@@ -29,11 +30,32 @@ function initializeVertexAI() {
       location: LOCATION
     });
 
-    generativeModel = vertexAI.getGenerativeModel({
+    // Fast model for quick tasks (tag extraction, descriptions)
+    fastModel = vertexAI.getGenerativeModel({
       model: 'gemini-2.0-flash-001'
     });
+
+    // Thinking model for complex reasoning (visual descriptors, master prompts)
+    // Using gemini-2.0-flash-thinking-exp for enhanced reasoning
+    try {
+      thinkingModel = vertexAI.getGenerativeModel({
+        model: 'gemini-2.0-flash-thinking-exp-01-21',
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 4096
+        }
+      });
+    } catch (e) {
+      console.log('Thinking model not available, falling back to fast model');
+      thinkingModel = fastModel;
+    }
   }
-  return generativeModel;
+  return fastModel;
+}
+
+function getThinkingModel() {
+  initializeVertexAI();
+  return thinkingModel || fastModel;
 }
 
 // Extract tag information from jewelry images
@@ -100,9 +122,9 @@ Hvis du VIRKELIG ikke kan se/lese taggen, returner:
   }
 }
 
-// Generate visual descriptor for the jewelry
+// Generate visual descriptor for the jewelry (using thinking model for better reasoning)
 async function generateVisualDescriptor(imageBuffers, category) {
-  const model = initializeVertexAI();
+  const model = getThinkingModel();
 
   const imageParts = imageBuffers.map(buffer => ({
     inlineData: {
@@ -226,6 +248,74 @@ Vær KONSIS - ikke skriv lange beskrivelser. Maksimalt 2 korte setninger.`;
   }
 }
 
+// Generate refined master prompt using thinking model
+async function generateMasterPrompt(visualDescriptor, compositionPrompt, category) {
+  const model = getThinkingModel();
+
+  const categoryNames = {
+    'ring': 'ring',
+    'halskjede': 'necklace',
+    'armbaand': 'bracelet',
+    'oredobber': 'earrings',
+    'anheng': 'pendant'
+  };
+
+  const prompt = `You are an expert luxury jewelry photographer and art director. Your task is to create a PRECISE, DETAILED prompt for an AI image generator to produce a stunning luxury editorial photograph.
+
+JEWELRY DESCRIPTION (what the piece looks like):
+${visualDescriptor}
+
+COMPOSITION & STYLING REFERENCE (how to photograph it):
+${compositionPrompt}
+
+CATEGORY: ${categoryNames[category] || 'jewelry'}
+
+Create a SINGLE, COMPREHENSIVE image generation prompt that:
+1. Integrates the exact visual details of the jewelry piece
+2. Applies the composition, lighting, and styling from the reference
+3. Specifies ultra-high quality 2K resolution requirements
+4. Describes the exact camera angle, depth of field, and focus
+5. Includes specific lighting setup (direction, quality, color temperature)
+6. Describes the background/environment in detail
+7. Mentions any props or supporting elements
+8. Specifies the mood and atmosphere
+
+OUTPUT FORMAT:
+Return ONLY the final prompt text, nothing else. The prompt should be a single flowing paragraph that could be directly used with an image generator. Do not include any JSON, labels, or explanations - just the pure prompt text.
+
+Make it detailed enough that an AI could generate the exact image described. Focus on photorealistic, editorial quality output.`;
+
+  try {
+    const request = {
+      contents: [
+        {
+          role: 'user',
+          parts: [{ text: prompt }]
+        }
+      ]
+    };
+
+    const response = await model.generateContent(request);
+    const result = response.response;
+
+    // Handle thinking model response (may have multiple parts)
+    const parts = result.candidates[0].content.parts;
+    // Get the last text part (thinking models put the answer at the end)
+    let masterPrompt = '';
+    for (const part of parts) {
+      if (part.text) {
+        masterPrompt = part.text;
+      }
+    }
+
+    return masterPrompt.trim();
+  } catch (error) {
+    console.error('Gemini master prompt generation error:', error);
+    // Fallback: combine the inputs manually
+    return `Ultra high-definition 2K luxury jewelry editorial photograph. ${visualDescriptor} ${compositionPrompt} Professional studio lighting, shallow depth of field, photorealistic quality.`;
+  }
+}
+
 // Combined analysis function
 async function analyzeJewelryImages(imageBuffers, category) {
   // Run tag extraction and visual descriptor in parallel
@@ -252,6 +342,8 @@ module.exports = {
   extractTagInfo,
   generateVisualDescriptor,
   generateProductDescription,
+  generateMasterPrompt,
   analyzeJewelryImages,
-  initializeVertexAI
+  initializeVertexAI,
+  getThinkingModel
 };

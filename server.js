@@ -131,10 +131,10 @@ app.delete('/api/session/:sessionId', requireAuth, (req, res) => {
 
 app.post('/api/upload', requireAuth, upload.array('images', 20), async (req, res) => {
   try {
-    const { sessionId, category, ethnicity } = req.body;
+    const { sessionId, category } = req.body;
 
-    if (!sessionId || !category || !ethnicity) {
-      return res.status(400).json({ error: 'Missing required fields: sessionId, category, ethnicity' });
+    if (!sessionId || !category) {
+      return res.status(400).json({ error: 'Missing required fields: sessionId, category' });
     }
 
     const session = activeSessions.get(sessionId);
@@ -148,7 +148,6 @@ app.post('/api/upload', requireAuth, upload.array('images', 20), async (req, res
 
     // Update session
     session.category = category;
-    session.ethnicity = ethnicity;
     session.status = 'analyzing';
     session.rawImages = req.files.map(f => ({
       originalName: f.originalname,
@@ -252,15 +251,30 @@ app.post('/api/generate/:sessionId', requireAuth, async (req, res) => {
 
   // Store custom prompts from request
   const { customPrompts } = req.body || {};
-  session.customPrompts = customPrompts || {};
 
+  // Merge custom prompts into master prompts (custom prompts override master prompts)
+  if (session.masterPrompts && customPrompts && Object.keys(customPrompts).length > 0) {
+    Object.keys(customPrompts).forEach(key => {
+      if (customPrompts[key]) {
+        session.masterPrompts[key] = customPrompts[key];
+      }
+    });
+    console.log('Merged custom prompts into master prompts');
+  }
+
+  session.customPrompts = customPrompts || {};
   session.status = 'generating';
   session.generatedImages = [];
+
+  // Get perspectives from composition config or legacy prompts
+  const { getPerspectivesForCategory } = require('./config/compositionPrompts');
+  const compositionPerspectives = getPerspectivesForCategory(session.category);
+  const legacyPerspectives = imageGenerator.getPerspectives(session.category);
 
   res.json({
     success: true,
     message: 'Starting image generation...',
-    perspectives: imageGenerator.getPerspectives(session.category)
+    perspectives: compositionPerspectives.length > 0 ? compositionPerspectives : legacyPerspectives
   });
 
   // Start generation in background
@@ -275,15 +289,28 @@ app.post('/api/generate/:sessionId', requireAuth, async (req, res) => {
 async function generateImages(session) {
   try {
     const referenceBuffers = session.rawImages.map(img => img.buffer);
-
     console.log(`Starting image generation for session ${session.id}`);
-    const results = await imageGenerator.generateAllPerspectives(
-      session.visualDescriptor,
-      session.category,
-      session.ethnicity,
-      referenceBuffers,
-      session.customPrompts || {}
-    );
+
+    let results;
+
+    // Check if we have master prompts from the new composition system
+    if (session.masterPrompts && Object.keys(session.masterPrompts).length > 0) {
+      console.log('Using new master prompt system with composition references');
+      results = await imageGenerator.generateFromMasterPrompts(
+        session.masterPrompts,
+        referenceBuffers
+      );
+    } else {
+      // Fall back to old system
+      console.log('Using legacy prompt system');
+      results = await imageGenerator.generateAllPerspectives(
+        session.visualDescriptor,
+        session.category,
+        session.ethnicity || 'south_asian',
+        referenceBuffers,
+        session.customPrompts || {}
+      );
+    }
 
     // Store results (temporarily in memory, not yet uploaded to Drive)
     session.generatedImages = results.map(r => ({
@@ -563,6 +590,109 @@ app.get('/api/prompts/:category', requireAuth, (req, res) => {
 
   res.json({ category, perspectives, visualDescriptor, ethnicity });
 });
+
+// Get composition reference perspectives for a category
+app.get('/api/perspectives/:category', requireAuth, (req, res) => {
+  const { category } = req.params;
+  const { getPerspectivesForCategory } = require('./config/compositionPrompts');
+
+  const perspectives = getPerspectivesForCategory(category);
+
+  if (!perspectives || perspectives.length === 0) {
+    return res.status(404).json({ error: 'No perspectives found for category' });
+  }
+
+  res.json({ category, perspectives });
+});
+
+// Get master rendering prompts for a session
+app.get('/api/master-prompts/:sessionId', requireAuth, async (req, res) => {
+  const session = activeSessions.get(req.params.sessionId);
+  if (!session) {
+    return res.status(404).json({ error: 'Session not found' });
+  }
+
+  if (!session.category) {
+    return res.status(400).json({ error: 'Session has no category' });
+  }
+
+  const { getPerspectivesForCategory } = require('./config/compositionPrompts');
+  const perspectives = getPerspectivesForCategory(session.category);
+
+  if (!perspectives || perspectives.length === 0) {
+    return res.status(404).json({ error: 'No perspectives found for category' });
+  }
+
+  const visualDescriptor = session.visualDescriptor || '[Visual descriptor not yet generated]';
+
+  // Check if we already have generated master prompts in session
+  if (session.masterPrompts && Object.keys(session.masterPrompts).length > 0) {
+    return res.json({
+      category: session.category,
+      visualDescriptor,
+      masterPrompts: session.masterPrompts
+    });
+  }
+
+  // Generate master prompts using Gemini thinking model (parallel processing)
+  try {
+    const promptPromises = perspectives.map(async (p) => {
+      const masterPrompt = await gemini.generateMasterPrompt(
+        visualDescriptor,
+        p.prompt,
+        session.category
+      );
+      return { id: p.id, prompt: masterPrompt };
+    });
+
+    const results = await Promise.all(promptPromises);
+
+    const masterPrompts = {};
+    results.forEach(r => {
+      masterPrompts[r.id] = r.prompt;
+    });
+
+    // Cache in session for future requests
+    session.masterPrompts = masterPrompts;
+
+    res.json({
+      category: session.category,
+      visualDescriptor,
+      masterPrompts
+    });
+  } catch (error) {
+    console.error('Error generating master prompts:', error);
+    // Fallback to simple template
+    const masterPrompts = {};
+    perspectives.forEach(p => {
+      masterPrompts[p.id] = buildMasterPrompt(visualDescriptor, p.prompt, session.category);
+    });
+    res.json({
+      category: session.category,
+      visualDescriptor,
+      masterPrompts
+    });
+  }
+});
+
+// Helper function to build master prompt
+function buildMasterPrompt(visualDescriptor, compositionPrompt, category) {
+  return `TASK: Generate an ultra high-definition 2K luxury jewelry editorial photograph.
+
+PRODUCT REFERENCE:
+The jewelry piece is described as: ${visualDescriptor}
+
+COMPOSITION REFERENCE:
+${compositionPrompt}
+
+TECHNICAL REQUIREMENTS:
+- Resolution: 2K (2048x2048 minimum)
+- Style: Professional luxury editorial photography
+- No CGI, no artificial look
+- No text, logos, or watermarks
+- Photorealistic with natural lighting
+- Clean, minimalist aesthetic suitable for high-end e-commerce`;
+}
 
 // =============================================================================
 // CHATBOT ROUTES (for image regeneration chat)

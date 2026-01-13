@@ -271,6 +271,54 @@ async function regenerateImage(visualDescriptor, category, ethnicity, perspectiv
   };
 }
 
+// Generate images using composition prompts and master prompts (new system)
+async function generateFromMasterPrompts(masterPrompts, referenceImageBuffers, compositionImageBuffers = {}) {
+  const results = [];
+  const perspectiveIds = Object.keys(masterPrompts);
+
+  console.log(`\n=== Starting Master Prompt generation with Nano Banana Pro ===`);
+  console.log(`Reference images: ${referenceImageBuffers.length}`);
+  console.log(`Perspectives to generate: ${perspectiveIds.length}\n`);
+
+  for (let i = 0; i < perspectiveIds.length; i++) {
+    const perspectiveId = perspectiveIds[i];
+    const masterPrompt = masterPrompts[perspectiveId];
+
+    console.log(`[${i + 1}/${perspectiveIds.length}] Generating: ${perspectiveId}`);
+
+    try {
+      // Combine reference images with composition reference if available
+      const allImages = [...referenceImageBuffers];
+      if (compositionImageBuffers[perspectiveId]) {
+        allImages.push(compositionImageBuffers[perspectiveId]);
+      }
+
+      const result = await generateSingleImage(masterPrompt, allImages);
+      results.push({
+        perspectiveId,
+        perspectiveName: perspectiveId,
+        imageNumber: i + 1,
+        ...result
+      });
+      console.log(`✓ ${perspectiveId} completed`);
+    } catch (error) {
+      console.error(`✗ Failed to generate ${perspectiveId}:`, error.message);
+      results.push({
+        perspectiveId,
+        perspectiveName: perspectiveId,
+        imageNumber: i + 1,
+        success: false,
+        error: error.message
+      });
+    }
+  }
+
+  const successCount = results.filter(r => r.success).length;
+  console.log(`\n=== Generation complete: ${successCount}/${perspectiveIds.length} successful ===\n`);
+
+  return results;
+}
+
 // Get available perspectives for a category
 function getPerspectives(category) {
   const categoryPrompts = PROMPTS[category];
@@ -298,6 +346,7 @@ function getQueueStatus() {
 module.exports = {
   generateSingleImage,
   generateAllPerspectives,
+  generateFromMasterPrompts,
   regenerateImage,
   getPerspectives,
   getQueueStatus,

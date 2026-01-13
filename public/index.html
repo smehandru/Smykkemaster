@@ -761,14 +761,10 @@
             </select>
           </div>
           <div class="form-group">
-            <label>Etnisitet for modell</label>
-            <select id="ethnicitySelect">
-              <option value="random">Random</option>
-              <option value="tamilsk">Tamilsk</option>
-              <option value="caucasian">Caucasian</option>
-              <option value="norsk">Norsk</option>
-              <option value="asian">Asian</option>
-            </select>
+            <label>Komposisjon</label>
+            <button class="btn btn-outline" onclick="openPerspectiveModal()" id="perspectiveBtn" style="width: 100%; margin-top: 0.25rem;">
+              Perspektiv
+            </button>
           </div>
         </div>
 
@@ -823,7 +819,7 @@
 
         <div class="actions-bar">
           <button class="btn btn-outline" onclick="updateAnalysis()">Oppdater</button>
-          <button class="btn btn-outline" onclick="openPromptModal()">Prompt</button>
+          <button class="btn btn-outline" onclick="openAdvancedModal()">Advanced</button>
           <button id="generateBtn" class="btn btn-gold" onclick="generateImages()">
             <span class="btn-text">Generer bilder</span>
             <span class="btn-spinner hidden">⟳</span>
@@ -868,19 +864,35 @@
     </div>
   </div>
 
-  <!-- Prompt Modal -->
-  <div id="promptModal" class="prompt-modal hidden">
-    <div class="prompt-modal-content">
+  <!-- Perspective Modal -->
+  <div id="perspectiveModal" class="prompt-modal hidden">
+    <div class="prompt-modal-content" style="max-width: 900px;">
       <div class="prompt-modal-header">
-        <h3>Rediger Prompts</h3>
-        <button class="prompt-modal-close" onclick="closePromptModal()">&times;</button>
+        <h3>Komposisjonsreferanser</h3>
+        <button class="prompt-modal-close" onclick="closePerspectiveModal()">&times;</button>
       </div>
-      <div class="prompt-modal-body" id="promptModalBody">
-        <!-- Prompts will be inserted here -->
+      <div class="prompt-modal-body" id="perspectiveModalBody" style="max-height: 70vh; overflow-y: auto;">
+        <p style="color: var(--text-muted); margin-bottom: 1rem;">Velg kategori først for å se referansebilder for plassering, lys og stil.</p>
       </div>
       <div class="prompt-modal-footer">
-        <button class="btn btn-outline" onclick="closePromptModal()">Avbryt</button>
-        <button class="btn btn-gold" onclick="savePrompts()">Lagre endringer</button>
+        <button class="btn btn-outline" onclick="closePerspectiveModal()">Lukk</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Advanced Modal (Master Prompts) -->
+  <div id="advancedModal" class="prompt-modal hidden">
+    <div class="prompt-modal-content">
+      <div class="prompt-modal-header">
+        <h3>Master Rendering Prompts</h3>
+        <button class="prompt-modal-close" onclick="closeAdvancedModal()">&times;</button>
+      </div>
+      <div class="prompt-modal-body" id="advancedModalBody">
+        <!-- Master prompts will be inserted here -->
+      </div>
+      <div class="prompt-modal-footer">
+        <button class="btn btn-outline" onclick="closeAdvancedModal()">Avbryt</button>
+        <button class="btn btn-gold" onclick="saveMasterPrompts()">Lagre endringer</button>
       </div>
     </div>
   </div>
@@ -1178,7 +1190,6 @@
       }
 
       const category = document.getElementById('categorySelect').value;
-      const ethnicity = document.getElementById('ethnicitySelect').value;
 
       if (!category) {
         showStatus('Velg en kategori først', 'warning', false);
@@ -1201,7 +1212,6 @@
         const formData = new FormData();
         formData.append('sessionId', currentSession.id);
         formData.append('category', category);
-        formData.append('ethnicity', ethnicity);
 
         for (const item of selectedFiles) {
           formData.append('images', item.file, item.originalName);
@@ -1338,31 +1348,103 @@
       }
     }
 
-    // Prompt Modal functions
-    async function openPromptModal() {
+    // Perspective Modal functions
+    async function openPerspectiveModal() {
+      const category = document.getElementById('categorySelect').value;
+
+      if (!category) {
+        showStatus('Velg en kategori først', 'warning', false);
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/perspectives/${category}`);
+        const data = await res.json();
+
+        if (data.perspectives) {
+          renderPerspectiveModal(data.perspectives, category);
+          document.getElementById('perspectiveModal').classList.remove('hidden');
+        }
+      } catch (error) {
+        console.error('Failed to fetch perspectives:', error);
+        showStatus('Kunne ikke hente perspektiver', 'error', false);
+      }
+    }
+
+    function renderPerspectiveModal(perspectives, category) {
+      const body = document.getElementById('perspectiveModalBody');
+      const categoryNames = {
+        'ring': 'Ringer',
+        'halskjede': 'Halskjeder',
+        'armbaand': 'Armbånd',
+        'oredobber': 'Øredobber',
+        'anheng': 'Anheng'
+      };
+
+      body.innerHTML = `
+        <h4 style="color: var(--gold); margin-bottom: 1rem;">${categoryNames[category]} - ${perspectives.length} perspektiver</h4>
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem;">
+          ${perspectives.map((p, index) => `
+            <div style="background: var(--bg-dark); border-radius: 8px; overflow: hidden;">
+              <img src="/references/${category}/${p.imageFile}"
+                   alt="${p.name}"
+                   style="width: 100%; height: 180px; object-fit: cover; background: #333;"
+                   onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%23333%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2255%22 text-anchor=%22middle%22 fill=%22%23666%22 font-size=%2212%22>Bilde ${index + 1}</text></svg>'">
+              <div style="padding: 0.75rem;">
+                <strong style="color: var(--gold);">${index + 1}. ${p.name}</strong>
+                <p style="color: var(--text-muted); font-size: 0.8rem; margin-top: 0.5rem; max-height: 60px; overflow-y: auto;">
+                  ${p.prompt.substring(0, 150)}...
+                </p>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    function closePerspectiveModal() {
+      document.getElementById('perspectiveModal').classList.add('hidden');
+    }
+
+    // Advanced Modal functions (Master Rendering Prompts)
+    let masterPrompts = {};
+
+    async function openAdvancedModal() {
       if (!currentSession || !currentSession.category) {
         showStatus('Velg kategori og last opp bilder først', 'warning', false);
         return;
       }
 
-      // Fetch prompts for current category with session context
+      // Show modal with loading state
+      const body = document.getElementById('advancedModalBody');
+      body.innerHTML = `
+        <div style="text-align: center; padding: 3rem;">
+          <div class="skeleton-shimmer" style="width: 60px; height: 60px; border-radius: 50%; margin: 0 auto 1rem;"></div>
+          <p style="color: var(--gold);">Genererer master prompts med AI...</p>
+          <p style="color: var(--text-muted); font-size: 0.9rem;">Bruker Gemini thinking model for optimal kvalitet</p>
+        </div>
+      `;
+      document.getElementById('advancedModal').classList.remove('hidden');
+
       try {
-        const res = await fetch(`/api/prompts/${currentSession.category}?sessionId=${currentSession.id}`);
+        const res = await fetch(`/api/master-prompts/${currentSession.id}`);
         const data = await res.json();
 
-        if (data.perspectives) {
-          perspectivesList = data.perspectives;
-          renderPromptModal(data.perspectives, data.visualDescriptor);
-          document.getElementById('promptModal').classList.remove('hidden');
+        if (data.masterPrompts) {
+          masterPrompts = data.masterPrompts;
+          renderAdvancedModal(data.masterPrompts, data.visualDescriptor);
+        } else {
+          body.innerHTML = '<p style="color: var(--text-muted);">Ingen master prompts generert ennå.</p>';
         }
       } catch (error) {
-        console.error('Failed to fetch prompts:', error);
-        showStatus('Kunne ikke hente prompts', 'error', false);
+        console.error('Failed to fetch master prompts:', error);
+        body.innerHTML = '<p style="color: #ff6b6b;">Feil ved henting av master prompts. Prøv igjen.</p>';
+        showStatus('Kunne ikke hente master prompts', 'error', false);
       }
     }
 
-    function renderPromptModal(perspectives, visualDescriptor) {
-      const body = document.getElementById('promptModalBody');
+    function renderAdvancedModal(prompts, visualDescriptor) {
+      const body = document.getElementById('advancedModalBody');
 
       const headerHtml = visualDescriptor ? `
         <div class="prompt-item" style="background: var(--bg-dark); padding: 1rem; border-radius: 4px; margin-bottom: 1.5rem;">
@@ -1371,26 +1453,26 @@
         </div>
       ` : '';
 
-      body.innerHTML = headerHtml + perspectives.map((p, index) => `
+      body.innerHTML = headerHtml + Object.entries(prompts).map(([perspectiveId, prompt]) => `
         <div class="prompt-item">
-          <label>Bilde ${p.imageNumber}: ${p.name} ${p.requiresModel ? '(med modell)' : ''}</label>
-          <textarea id="prompt_${p.id}" data-perspective-id="${p.id}">${customPrompts[p.id] || p.prompt}</textarea>
+          <label style="color: var(--gold);">Master Prompt: ${perspectiveId}</label>
+          <textarea id="master_${perspectiveId}" data-perspective-id="${perspectiveId}" style="min-height: 150px;">${customPrompts[perspectiveId] || prompt}</textarea>
         </div>
       `).join('');
     }
 
-    function closePromptModal() {
-      document.getElementById('promptModal').classList.add('hidden');
+    function closeAdvancedModal() {
+      document.getElementById('advancedModal').classList.add('hidden');
     }
 
-    function savePrompts() {
-      const textareas = document.querySelectorAll('#promptModalBody textarea');
+    function saveMasterPrompts() {
+      const textareas = document.querySelectorAll('#advancedModalBody textarea');
       textareas.forEach(ta => {
         const perspectiveId = ta.dataset.perspectiveId;
         customPrompts[perspectiveId] = ta.value;
       });
-      closePromptModal();
-      showStatus('Prompts lagret', 'success', false);
+      closeAdvancedModal();
+      showStatus('Master prompts lagret', 'success', false);
     }
 
     // Image generation
@@ -1404,15 +1486,31 @@
       // Show loading state
       btn.classList.add('loading');
       spinner.classList.remove('hidden');
-      text.textContent = 'Genererer...';
+      text.textContent = 'Forbereder...';
 
+      // Auto-generate master prompts if not already done
+      if (Object.keys(masterPrompts).length === 0) {
+        showStatus('Genererer AI master prompts...', 'info', true);
+        try {
+          const promptRes = await fetch(`/api/master-prompts/${currentSession.id}`);
+          const promptData = await promptRes.json();
+          if (promptData.masterPrompts) {
+            masterPrompts = promptData.masterPrompts;
+            console.log('Auto-generated master prompts:', Object.keys(masterPrompts).length);
+          }
+        } catch (e) {
+          console.warn('Could not auto-generate master prompts:', e);
+        }
+      }
+
+      text.textContent = 'Genererer...';
       showStatus('Starter bildegenerering...', 'info', true);
 
       try {
         const res = await fetch(`/api/generate/${currentSession.id}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ customPrompts })
+          body: JSON.stringify({ customPrompts: Object.keys(customPrompts).length > 0 ? customPrompts : masterPrompts })
         });
 
         const data = await res.json();
