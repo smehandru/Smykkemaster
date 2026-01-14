@@ -1019,13 +1019,15 @@
       document.getElementById('driveStatus').classList.remove('completed');
       document.getElementById('sheetsStatus').classList.remove('completed');
       document.getElementById('categorySelect').value = '';
-      document.getElementById('ethnicitySelect').value = 'random';
       document.getElementById('uploadBtn').disabled = true;
       document.getElementById('statusBar').classList.add('hidden');
       // Show dropzone again
       document.getElementById('dropzoneContainer').classList.remove('hidden');
       // Reset upload button
       resetUploadButton();
+      // Reset perspectives
+      selectedPerspectives = [];
+      availablePerspectives = [];
     }
 
     function saveSessionToStorage() {
