@@ -307,13 +307,13 @@ async function generateSingleImageWithComposition(prompt, productImageBuffers, c
     let instructionText = '';
     if (hasComposition) {
       instructionText = `CRITICAL INSTRUCTIONS:
-- The FIRST ${numProductImages} image(s) above are the PRODUCT IMAGES showing the actual jewelry piece. Copy EVERY detail of the jewelry design ONLY from these images.
-- The LAST image is a COMPOSITION REFERENCE for styling ONLY. Use it ONLY for: camera angle, lighting, background, mood. DO NOT copy any jewelry design elements from it.
+- Images 1-${numProductImages} in this message are the PRODUCT IMAGES showing the actual jewelry piece. Copy EVERY detail of the jewelry design ONLY from these images.
+- Image ${numProductImages + 1} (the LAST image) is a COMPOSITION REFERENCE for styling ONLY. Use it ONLY for: camera angle, lighting, background, mood. DO NOT copy any jewelry design elements from it.
 - The jewelry in the composition reference is a DIFFERENT piece - IGNORE its design completely.
 
 ${prompt}`;
     } else if (numProductImages > 0) {
-      instructionText = `Using the ${numProductImages} jewelry image${numProductImages > 1 ? 's' : ''} above as exact reference for the jewelry design (showing the piece from ${numProductImages > 1 ? 'multiple angles' : 'one angle'}), ${prompt}`;
+      instructionText = `Using images 1-${numProductImages} in this message as exact reference for the jewelry design (showing the piece from ${numProductImages > 1 ? 'multiple angles' : 'one angle'}), ${prompt}`;
     } else {
       instructionText = prompt;
     }

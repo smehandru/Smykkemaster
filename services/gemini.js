@@ -271,13 +271,13 @@ async function generateMasterPrompt(visualDescriptor, compositionPrompt, categor
 
 === INPUT REFERENCES ===
 
-[PRODUCT IMAGES: ${numProductImages} image(s) above]
+[PRODUCT IMAGES: Images 1-${numProductImages} in this message]
 These are the raw product photos of the actual jewelry piece. Study every detail: shape, texture, finish, patterns, stones, metalwork.
 
 [PRODUCT VISUAL DESCRIPTOR]
 ${visualDescriptor}
 
-${hasCompositionImage ? `[COMPOSITION REFERENCE IMAGE: 1 image above (the last image)]
+${hasCompositionImage ? `[COMPOSITION REFERENCE IMAGE: Image ${numProductImages + 1} - the LAST image in this message]
 ⚠️ CRITICAL: This image is ONLY for reference of:
 - Camera angle and framing
 - Lighting setup and direction
