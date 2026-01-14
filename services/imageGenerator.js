@@ -449,11 +449,27 @@ function getQueueStatus() {
   };
 }
 
+// Regenerate a single image using the new composition-based system
+async function regenerateSingleImage(masterPrompt, productImageBuffers, compositionImageBuffer = null) {
+  console.log(`Regenerating single image with composition-based system`);
+  console.log(`  Product images: ${productImageBuffers ? productImageBuffers.length : 0}`);
+  console.log(`  Composition reference: ${compositionImageBuffer ? 'yes' : 'no'}`);
+
+  const result = await generateSingleImageWithComposition(
+    masterPrompt,
+    productImageBuffers,
+    compositionImageBuffer
+  );
+
+  return result;
+}
+
 module.exports = {
   generateSingleImage,
   generateAllPerspectives,
   generateFromMasterPrompts,
   regenerateImage,
+  regenerateSingleImage,
   getPerspectives,
   getQueueStatus,
   RATE_LIMIT

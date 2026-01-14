@@ -403,7 +403,7 @@ app.get('/api/generated/:sessionId', requireAuth, (req, res) => {
   });
 });
 
-// Regenerate specific image
+// Regenerate specific image - uses new composition-based system
 app.post('/api/regenerate/:sessionId/:perspectiveId', requireAuth, async (req, res) => {
   const session = activeSessions.get(req.params.sessionId);
   if (!session) {
@@ -417,13 +417,49 @@ app.post('/api/regenerate/:sessionId/:perspectiveId', requireAuth, async (req, r
     // Use ALL reference images for regeneration
     const referenceBuffers = session.rawImages.map(img => img.buffer);
 
-    const result = await imageGenerator.regenerateImage(
-      session.visualDescriptor,
-      session.category,
-      session.ethnicity,
-      perspectiveId,
+    // Load composition perspective info
+    const { getPerspectivesForCategory } = require('./config/compositionPrompts');
+    const perspectives = getPerspectivesForCategory(session.category);
+    const perspective = perspectives.find(p => p.id === perspectiveId);
+
+    // Get or generate master prompt for this perspective
+    let masterPrompt = customPrompt;
+    let compositionImageBuffer = null;
+
+    if (!masterPrompt) {
+      // Use stored master prompt if available
+      if (session.masterPrompts && session.masterPrompts[perspectiveId]) {
+        masterPrompt = session.masterPrompts[perspectiveId];
+      } else if (perspective) {
+        // Generate new master prompt using Gemini 3 Pro
+        compositionImageBuffer = await loadCompositionImage(session.category, perspective.imageFile);
+        masterPrompt = await gemini.generateMasterPrompt(
+          session.visualDescriptor || 'A beautiful 22 karat gold jewelry piece',
+          perspective.prompt,
+          session.category,
+          referenceBuffers,
+          compositionImageBuffer
+        );
+        // Store for future use
+        if (!session.masterPrompts) session.masterPrompts = {};
+        session.masterPrompts[perspectiveId] = masterPrompt;
+      } else {
+        throw new Error(`Unknown perspective: ${perspectiveId}`);
+      }
+    }
+
+    // Load composition image if not already loaded
+    if (!compositionImageBuffer && perspective) {
+      compositionImageBuffer = await loadCompositionImage(session.category, perspective.imageFile);
+    }
+
+    console.log(`Regenerating ${perspectiveId} with composition-based system`);
+
+    // Use the new composition-aware generation
+    const result = await imageGenerator.regenerateSingleImage(
+      masterPrompt,
       referenceBuffers,
-      customPrompt || null
+      compositionImageBuffer
     );
 
     // Update the specific image in session
@@ -433,18 +469,21 @@ app.post('/api/regenerate/:sessionId/:perspectiveId', requireAuth, async (req, r
 
     if (imageIndex >= 0) {
       session.generatedImages[imageIndex] = {
-        ...result,
+        perspectiveId,
+        perspectiveName: perspective ? perspective.name : perspectiveId,
         imageNumber: session.generatedImages[imageIndex].imageNumber,
+        success: result.success,
         imageBase64: result.success ? result.imageBuffer.toString('base64') : null,
-        imageBuffer: result.success ? result.imageBuffer : null
+        imageBuffer: result.success ? result.imageBuffer : null,
+        error: result.error
       };
     }
 
     res.json({
       success: true,
       image: {
-        perspectiveId: result.perspectiveId,
-        perspectiveName: result.perspectiveName,
+        perspectiveId,
+        perspectiveName: perspective ? perspective.name : perspectiveId,
         success: result.success,
         imageBase64: result.success ? result.imageBuffer.toString('base64') : null,
         error: result.error

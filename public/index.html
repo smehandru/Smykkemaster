@@ -1182,14 +1182,13 @@
 
     // Upload and analyze
     async function uploadImages() {
-      // Check if session exists, create one if not
+      // ALWAYS create a new session when uploading new images
+      // This ensures old session data doesn't interfere with new uploads
+      console.log('Creating new session for upload...');
+      await newSession();
       if (!currentSession) {
-        console.log('No session found, creating new session...');
-        await newSession();
-        if (!currentSession) {
-          showStatus('Kunne ikke opprette sesjon. Prøv å laste siden på nytt.', 'error', false);
-          return;
-        }
+        showStatus('Kunne ikke opprette sesjon. Prøv å laste siden på nytt.', 'error', false);
+        return;
       }
 
       if (selectedFiles.length === 0) {
