@@ -57,7 +57,7 @@ Styling & Mood: The background is a sterile, seamless pure white, providing maxi
     {
       id: 'halskjede3',
       name: 'Display Bust',
-      imageFile: 'halskjede3.png',
+      imageFile: 'halskjede3.jpg',
       prompt: `Placement: The jewelry item is staged on a professional, minimalist white display bust or mannequin stand, captured from a direct frontal perspective. The piece is centered horizontally, draped naturally along the contours of the stand to accurately represent its physical hang and structural flow.
 Lighting: The scene features soft, diffused studio lighting that provides uniform coverage across the entire piece. The lighting is balanced to create gentle, controlled highlights that emphasize the object's three-dimensional form and surface textures while avoiding harsh hotspots or deep, obscuring shadows. A warm color temperature is utilized to enhance the richness of the materials.
 Styling & Mood: The background is a seamless, solid neutral-toned surface (such as beige or tan), providing a clean and elegant backdrop that isolates the subject. The contrast between the jewelry, the white display bust, and the warm background creates a sophisticated, high-end editorial aesthetic. The mood is refined, professional, and luxurious, typical of premium jewelry brand catalogs.`
