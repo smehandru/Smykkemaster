@@ -1182,6 +1182,21 @@
 
     // Upload and analyze
     async function uploadImages() {
+      // Check files and category BEFORE creating new session (since newSession clears them)
+      if (selectedFiles.length === 0) {
+        showStatus('Ingen bilder valgt', 'warning', false);
+        return;
+      }
+
+      const category = document.getElementById('categorySelect').value;
+      if (!category) {
+        showStatus('Velg en kategori først', 'warning', false);
+        return;
+      }
+
+      // Save files before creating new session
+      const filesToUpload = [...selectedFiles];
+
       // ALWAYS create a new session when uploading new images
       // This ensures old session data doesn't interfere with new uploads
       console.log('Creating new session for upload...');
@@ -1191,17 +1206,9 @@
         return;
       }
 
-      if (selectedFiles.length === 0) {
-        showStatus('Ingen bilder valgt', 'warning', false);
-        return;
-      }
-
-      const category = document.getElementById('categorySelect').value;
-
-      if (!category) {
-        showStatus('Velg en kategori først', 'warning', false);
-        return;
-      }
+      // Restore the files and category
+      selectedFiles = filesToUpload;
+      document.getElementById('categorySelect').value = category;
 
       // Update button to show analyzing state
       const btn = document.getElementById('uploadBtn');
