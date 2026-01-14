@@ -284,13 +284,15 @@ async function generateFromMasterPrompts(masterPrompts, referenceImageBuffers, c
     const perspectiveId = perspectiveIds[i];
     const masterPrompt = masterPrompts[perspectiveId];
 
-    console.log(`[${i + 1}/${perspectiveIds.length}] Generating: ${perspectiveId}`);
+    const hasCompositionRef = !!compositionImageBuffers[perspectiveId];
+    console.log(`[${i + 1}/${perspectiveIds.length}] Generating: ${perspectiveId} (product images: ${referenceImageBuffers.length}, composition ref: ${hasCompositionRef})`);
 
     try {
       // Combine reference images with composition reference if available
       const allImages = [...referenceImageBuffers];
-      if (compositionImageBuffers[perspectiveId]) {
+      if (hasCompositionRef) {
         allImages.push(compositionImageBuffers[perspectiveId]);
+        console.log(`  → Including composition reference image for ${perspectiveId}`);
       }
 
       const result = await generateSingleImage(masterPrompt, allImages);

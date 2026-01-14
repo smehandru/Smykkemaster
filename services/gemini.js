@@ -226,7 +226,8 @@ Vær KONSIS - ikke skriv lange beskrivelser. Maksimalt 2 korte setninger.`;
 }
 
 // Generate refined master prompt using Gemini 3 Pro with HIGH thinking
-async function generateMasterPrompt(visualDescriptor, compositionPrompt, category) {
+// Now accepts product images and composition reference image
+async function generateMasterPrompt(visualDescriptor, compositionPrompt, category, productImageBuffers = [], compositionImageBuffer = null) {
   const ai = initializeGenAI();
 
   const categoryNames = {
@@ -237,35 +238,78 @@ async function generateMasterPrompt(visualDescriptor, compositionPrompt, categor
     'anheng': 'pendant'
   };
 
-  const prompt = `You are an expert luxury jewelry photographer and art director. Your task is to create a PRECISE, DETAILED prompt for an AI image generator to produce a stunning luxury editorial photograph.
+  // Build content parts array with images and text
+  const contentParts = [];
 
-JEWELRY DESCRIPTION (what the piece looks like):
+  // Add product reference images first
+  if (productImageBuffers && productImageBuffers.length > 0) {
+    for (let i = 0; i < productImageBuffers.length; i++) {
+      contentParts.push({
+        inlineData: {
+          mimeType: 'image/jpeg',
+          data: productImageBuffers[i].toString('base64')
+        }
+      });
+    }
+  }
+
+  // Add composition reference image
+  if (compositionImageBuffer) {
+    contentParts.push({
+      inlineData: {
+        mimeType: 'image/png',
+        data: compositionImageBuffer.toString('base64')
+      }
+    });
+  }
+
+  // Build the modular prompt that references the images
+  const numProductImages = productImageBuffers ? productImageBuffers.length : 0;
+  const hasCompositionImage = !!compositionImageBuffer;
+
+  const prompt = `You are an expert luxury jewelry photographer and art director creating a master rendering prompt.
+
+=== INPUT REFERENCES ===
+
+[PRODUCT IMAGES: ${numProductImages} image(s) above]
+These are the raw product photos of the actual jewelry piece. Study every detail: shape, texture, finish, patterns, stones, metalwork.
+
+[PRODUCT VISUAL DESCRIPTOR]
 ${visualDescriptor}
 
-COMPOSITION & STYLING REFERENCE (how to photograph it):
+${hasCompositionImage ? `[COMPOSITION REFERENCE IMAGE: 1 image above (the last image)]
+This shows the EXACT composition, camera angle, lighting setup, and styling to replicate.` : ''}
+
+[COMPOSITION & STYLING INSTRUCTIONS]
 ${compositionPrompt}
 
-CATEGORY: ${categoryNames[category] || 'jewelry'}
+[CATEGORY: ${categoryNames[category] || 'jewelry'}]
 
-Create a SINGLE, COMPREHENSIVE image generation prompt that:
-1. Integrates the exact visual details of the jewelry piece
-2. Applies the composition, lighting, and styling from the reference
-3. Specifies ultra-high quality 2K resolution requirements
-4. Describes the exact camera angle, depth of field, and focus
-5. Includes specific lighting setup (direction, quality, color temperature)
-6. Describes the background/environment in detail
-7. Mentions any props or supporting elements
-8. Specifies the mood and atmosphere
+=== YOUR TASK ===
 
-OUTPUT FORMAT:
-Return ONLY the final prompt text, nothing else. The prompt should be a single flowing paragraph that could be directly used with an image generator. Do not include any JSON, labels, or explanations - just the pure prompt text.
+Create a MASTER RENDERING PROMPT that an AI image generator will use to create the final editorial photograph.
 
-Make it detailed enough that an AI could generate the exact image described. Focus on photorealistic, editorial quality output.`;
+The prompt MUST:
+1. Describe the jewelry piece EXACTLY as shown in the product images (copy every visual detail)
+2. Apply the EXACT composition from the reference image (camera angle, framing, positioning)
+3. Replicate the EXACT lighting setup from the reference (direction, softness, highlights)
+4. Match the background and styling from the reference
+5. Specify: 2K resolution, photorealistic, no CGI look, no text/logos/watermarks
+
+=== OUTPUT FORMAT ===
+
+Return ONLY the master prompt text. Start directly with the image description. No labels, no JSON, no explanations.
+
+Example format:
+"Ultra high-definition 2K luxury editorial photograph of [detailed jewelry description matching the product images]. [Exact composition from reference]. [Exact lighting setup]. [Background and mood]. Shot with [camera details]. Photorealistic quality, no CGI artifacts."`;
+
+  // Add the text prompt
+  contentParts.push({ text: prompt });
 
   try {
     const response = await ai.models.generateContent({
       model: THINKING_MODEL,
-      contents: [{ text: prompt }],
+      contents: contentParts,
       config: {
         thinkingConfig: {
           thinkingLevel: 'HIGH'
@@ -280,7 +324,7 @@ Make it detailed enough that an AI could generate the exact image described. Foc
     try {
       const fallbackResponse = await ai.models.generateContent({
         model: FAST_MODEL,
-        contents: [{ text: prompt }]
+        contents: contentParts
       });
       return fallbackResponse.text.trim();
     } catch (fallbackError) {

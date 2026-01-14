@@ -5,6 +5,7 @@ const cors = require('cors');
 const multer = require('multer');
 const session = require('express-session');
 const path = require('path');
+const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 
 // Services
@@ -13,6 +14,21 @@ const googleSheets = require('./services/googleSheets');
 const gemini = require('./services/gemini');
 const imageGenerator = require('./services/imageGenerator');
 const { PROMPTS } = require('./config/prompts');
+
+// Helper function to load composition reference image from disk
+async function loadCompositionImage(category, imageFile) {
+  try {
+    const imagePath = path.join(__dirname, 'public', 'references', category, imageFile);
+    if (fs.existsSync(imagePath)) {
+      return fs.readFileSync(imagePath);
+    }
+    console.warn(`Composition image not found: ${imagePath}`);
+    return null;
+  } catch (error) {
+    console.error(`Error loading composition image: ${error.message}`);
+    return null;
+  }
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -294,9 +310,29 @@ async function generateImages(session) {
     // Check if we have master prompts from the new composition system
     if (session.masterPrompts && Object.keys(session.masterPrompts).length > 0) {
       console.log('Using new master prompt system with composition references');
+
+      // Load composition reference images for each perspective
+      const { getPerspectivesForCategory } = require('./config/compositionPrompts');
+      const perspectives = getPerspectivesForCategory(session.category);
+
+      const compositionImageBuffers = {};
+      for (const p of perspectives) {
+        // Only load images for perspectives that are being generated
+        if (session.masterPrompts[p.id]) {
+          const imgBuffer = await loadCompositionImage(session.category, p.imageFile);
+          if (imgBuffer) {
+            compositionImageBuffers[p.id] = imgBuffer;
+            console.log(`Loaded composition image for ${p.id}: ${p.imageFile}`);
+          }
+        }
+      }
+
+      console.log(`Loaded ${Object.keys(compositionImageBuffers).length} composition reference images`);
+
       results = await imageGenerator.generateFromMasterPrompts(
         session.masterPrompts,
-        referenceBuffers
+        referenceBuffers,
+        compositionImageBuffers
       );
     } else {
       // Fall back to old system
@@ -632,15 +668,26 @@ app.get('/api/master-prompts/:sessionId', requireAuth, async (req, res) => {
     });
   }
 
+  // Get product images from session
+  const productImageBuffers = session.rawImages ? session.rawImages.map(img => img.buffer) : [];
+
   // Generate master prompts using Gemini thinking model (parallel processing)
+  // Now includes product images + composition reference images
   try {
     const promptPromises = perspectives.map(async (p) => {
+      // Load the composition reference image for this perspective
+      const compositionImageBuffer = await loadCompositionImage(session.category, p.imageFile);
+
+      console.log(`Generating master prompt for ${p.id} with ${productImageBuffers.length} product images and composition image: ${!!compositionImageBuffer}`);
+
       const masterPrompt = await gemini.generateMasterPrompt(
         visualDescriptor,
         p.prompt,
-        session.category
+        session.category,
+        productImageBuffers,
+        compositionImageBuffer
       );
-      return { id: p.id, prompt: masterPrompt };
+      return { id: p.id, prompt: masterPrompt, imageFile: p.imageFile };
     });
 
     const results = await Promise.all(promptPromises);
