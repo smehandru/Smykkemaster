@@ -299,52 +299,68 @@ app.post('/api/generate/:sessionId', requireAuth, async (req, res) => {
   });
 });
 
-// Background generation function
+// Background generation function - ALWAYS uses new composition-based system
 async function generateImages(session) {
   try {
     const referenceBuffers = session.rawImages.map(img => img.buffer);
     console.log(`Starting image generation for session ${session.id}`);
 
-    let results;
+    // Load composition perspectives for this category
+    const { getPerspectivesForCategory } = require('./config/compositionPrompts');
+    const perspectives = getPerspectivesForCategory(session.category);
 
-    // Check if we have master prompts from the new composition system
-    if (session.masterPrompts && Object.keys(session.masterPrompts).length > 0) {
-      console.log('Using new master prompt system with composition references');
+    if (!perspectives || perspectives.length === 0) {
+      throw new Error(`No composition perspectives found for category: ${session.category}`);
+    }
 
-      // Load composition reference images for each perspective
-      const { getPerspectivesForCategory } = require('./config/compositionPrompts');
-      const perspectives = getPerspectivesForCategory(session.category);
+    // If no master prompts exist, generate them now using Gemini 3 Pro
+    if (!session.masterPrompts || Object.keys(session.masterPrompts).length === 0) {
+      console.log('No master prompts found, generating with Gemini 3 Pro...');
 
-      const compositionImageBuffers = {};
+      const visualDescriptor = session.visualDescriptor || 'A beautiful 22 karat gold jewelry piece';
+      session.masterPrompts = {};
+
       for (const p of perspectives) {
-        // Only load images for perspectives that are being generated
-        if (session.masterPrompts[p.id]) {
-          const imgBuffer = await loadCompositionImage(session.category, p.imageFile);
-          if (imgBuffer) {
-            compositionImageBuffers[p.id] = imgBuffer;
-            console.log(`Loaded composition image for ${p.id}: ${p.imageFile}`);
-          }
+        try {
+          const compositionImageBuffer = await loadCompositionImage(session.category, p.imageFile);
+
+          console.log(`Generating master prompt for ${p.id}...`);
+          const masterPrompt = await gemini.generateMasterPrompt(
+            visualDescriptor,
+            p.prompt,
+            session.category,
+            referenceBuffers,
+            compositionImageBuffer
+          );
+          session.masterPrompts[p.id] = masterPrompt;
+        } catch (e) {
+          console.error(`Failed to generate master prompt for ${p.id}:`, e.message);
+          // Use composition prompt directly as simple fallback (NOT old legacy prompts)
+          session.masterPrompts[p.id] = `Ultra high-definition 2K luxury jewelry editorial photograph. ${visualDescriptor} ${p.prompt} Professional studio lighting, photorealistic quality, no CGI artifacts.`;
         }
       }
-
-      console.log(`Loaded ${Object.keys(compositionImageBuffers).length} composition reference images`);
-
-      results = await imageGenerator.generateFromMasterPrompts(
-        session.masterPrompts,
-        referenceBuffers,
-        compositionImageBuffers
-      );
-    } else {
-      // Fall back to old system
-      console.log('Using legacy prompt system');
-      results = await imageGenerator.generateAllPerspectives(
-        session.visualDescriptor,
-        session.category,
-        session.ethnicity || 'south_asian',
-        referenceBuffers,
-        session.customPrompts || {}
-      );
     }
+
+    // Load composition reference images for each perspective being generated
+    const compositionImageBuffers = {};
+    for (const p of perspectives) {
+      if (session.masterPrompts[p.id]) {
+        const imgBuffer = await loadCompositionImage(session.category, p.imageFile);
+        if (imgBuffer) {
+          compositionImageBuffers[p.id] = imgBuffer;
+          console.log(`Loaded composition image for ${p.id}: ${p.imageFile}`);
+        }
+      }
+    }
+
+    console.log(`Using composition-based system with ${Object.keys(session.masterPrompts).length} master prompts`);
+    console.log(`Loaded ${Object.keys(compositionImageBuffers).length} composition reference images`);
+
+    const results = await imageGenerator.generateFromMasterPrompts(
+      session.masterPrompts,
+      referenceBuffers,
+      compositionImageBuffers
+    );
 
     // Store results (temporarily in memory, not yet uploaded to Drive)
     session.generatedImages = results.map(r => ({
