@@ -278,23 +278,37 @@ These are the raw product photos of the actual jewelry piece. Study every detail
 ${visualDescriptor}
 
 ${hasCompositionImage ? `[COMPOSITION REFERENCE IMAGE: 1 image above (the last image)]
-This shows the EXACT composition, camera angle, lighting setup, and styling to replicate.` : ''}
+⚠️ CRITICAL: This image is ONLY for reference of:
+- Camera angle and framing
+- Lighting setup and direction
+- Background and environment styling
+- Overall mood and atmosphere
+⚠️ DO NOT use ANY jewelry design elements from this image! The jewelry shown in the composition reference is a DIFFERENT piece - IGNORE its design completely.` : ''}
 
 [COMPOSITION & STYLING INSTRUCTIONS]
 ${compositionPrompt}
 
 [CATEGORY: ${categoryNames[category] || 'jewelry'}]
 
+=== CRITICAL RULES ===
+
+⚠️ THE JEWELRY DESIGN MUST COME 100% FROM THE PRODUCT IMAGES ONLY ⚠️
+- Copy EVERY detail of the jewelry ONLY from the product images: exact shape, color, stones, metal finish, patterns, textures
+- COMPLETELY IGNORE any jewelry shown in the composition reference image - it is a DIFFERENT piece used only for styling reference
+- The composition reference provides ONLY: camera angle, lighting, background, mood - NOTHING about the jewelry itself
+- NEVER blend, mix, or combine jewelry designs from different image sources
+
 === YOUR TASK ===
 
 Create a MASTER RENDERING PROMPT that an AI image generator will use to create the final editorial photograph.
 
 The prompt MUST:
-1. Describe the jewelry piece EXACTLY as shown in the product images (copy every visual detail)
-2. Apply the EXACT composition from the reference image (camera angle, framing, positioning)
-3. Replicate the EXACT lighting setup from the reference (direction, softness, highlights)
-4. Match the background and styling from the reference
+1. Describe the jewelry piece EXACTLY as shown in the PRODUCT IMAGES ONLY (copy every visual detail from those specific images)
+2. Apply the composition FROM THE REFERENCE (camera angle, framing, positioning) - but COMPLETELY IGNORE the jewelry shown in it
+3. Replicate the lighting setup from the reference (direction, softness, highlights)
+4. Match the background and styling atmosphere from the reference
 5. Specify: 2K resolution, photorealistic, no CGI look, no text/logos/watermarks
+6. NEVER describe or include any jewelry elements from the composition reference image - only from product images
 
 === OUTPUT FORMAT ===
 

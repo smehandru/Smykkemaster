@@ -271,6 +271,112 @@ async function regenerateImage(visualDescriptor, category, ethnicity, perspectiv
   };
 }
 
+// Generate a single image with explicit separation of product images and composition reference
+// This ensures the model understands which images are for jewelry design vs styling reference
+async function generateSingleImageWithComposition(prompt, productImageBuffers, compositionImageBuffer = null) {
+  return enqueueRequest(async () => {
+    const model = initializeNanoBananaPro();
+
+    const parts = [];
+    const numProductImages = productImageBuffers ? productImageBuffers.length : 0;
+    const hasComposition = !!compositionImageBuffer;
+
+    // Add product reference images first
+    if (productImageBuffers && productImageBuffers.length > 0) {
+      for (let i = 0; i < productImageBuffers.length; i++) {
+        parts.push({
+          inlineData: {
+            mimeType: 'image/jpeg',
+            data: productImageBuffers[i].toString('base64')
+          }
+        });
+      }
+    }
+
+    // Add composition reference image last (if available)
+    if (compositionImageBuffer) {
+      parts.push({
+        inlineData: {
+          mimeType: 'image/png',
+          data: compositionImageBuffer.toString('base64')
+        }
+      });
+    }
+
+    // Build instruction text that CLEARLY separates product images from composition reference
+    let instructionText = '';
+    if (hasComposition) {
+      instructionText = `CRITICAL INSTRUCTIONS:
+- The FIRST ${numProductImages} image(s) above are the PRODUCT IMAGES showing the actual jewelry piece. Copy EVERY detail of the jewelry design ONLY from these images.
+- The LAST image is a COMPOSITION REFERENCE for styling ONLY. Use it ONLY for: camera angle, lighting, background, mood. DO NOT copy any jewelry design elements from it.
+- The jewelry in the composition reference is a DIFFERENT piece - IGNORE its design completely.
+
+${prompt}`;
+    } else if (numProductImages > 0) {
+      instructionText = `Using the ${numProductImages} jewelry image${numProductImages > 1 ? 's' : ''} above as exact reference for the jewelry design (showing the piece from ${numProductImages > 1 ? 'multiple angles' : 'one angle'}), ${prompt}`;
+    } else {
+      instructionText = prompt;
+    }
+
+    parts.push({ text: instructionText });
+
+    try {
+      const request = {
+        contents: [{ role: 'user', parts }],
+        generationConfig: {
+          responseModalities: ['image'],
+          candidateCount: 1,
+        },
+        safetySettings: [
+          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
+          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
+          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
+          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
+        ]
+      };
+
+      console.log('Sending request to Nano Banana Pro (with composition separation)...');
+      const startTime = Date.now();
+
+      const response = await model.generateContent(request);
+      const result = response.response;
+
+      const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+      console.log(`Image generated in ${duration}s`);
+
+      // Extract generated image from response
+      if (result.candidates && result.candidates[0]) {
+        const candidate = result.candidates[0];
+        if (candidate.content && candidate.content.parts) {
+          for (const part of candidate.content.parts) {
+            if (part.inlineData && part.inlineData.data) {
+              return {
+                success: true,
+                imageBuffer: Buffer.from(part.inlineData.data, 'base64'),
+                mimeType: part.inlineData.mimeType || 'image/jpeg',
+                generationTime: duration
+              };
+            }
+          }
+        }
+      }
+
+      throw new Error('No image data in response');
+    } catch (error) {
+      console.error(`Image generation error:`, error.message);
+
+      // Retry on rate limits
+      if (error.message.includes('429') || error.message.includes('RESOURCE_EXHAUSTED')) {
+        console.log(`Retrying in ${RATE_LIMIT.retryDelay / 1000}s...`);
+        await new Promise(resolve => setTimeout(resolve, RATE_LIMIT.retryDelay));
+        return generateSingleImageWithComposition(prompt, productImageBuffers, compositionImageBuffer);
+      }
+
+      throw error;
+    }
+  });
+}
+
 // Generate images using composition prompts and master prompts (new system)
 async function generateFromMasterPrompts(masterPrompts, referenceImageBuffers, compositionImageBuffers = {}) {
   const results = [];
@@ -288,14 +394,12 @@ async function generateFromMasterPrompts(masterPrompts, referenceImageBuffers, c
     console.log(`[${i + 1}/${perspectiveIds.length}] Generating: ${perspectiveId} (product images: ${referenceImageBuffers.length}, composition ref: ${hasCompositionRef})`);
 
     try {
-      // Combine reference images with composition reference if available
-      const allImages = [...referenceImageBuffers];
-      if (hasCompositionRef) {
-        allImages.push(compositionImageBuffers[perspectiveId]);
-        console.log(`  → Including composition reference image for ${perspectiveId}`);
-      }
-
-      const result = await generateSingleImage(masterPrompt, allImages);
+      // Generate with explicit separation of product images and composition reference
+      const result = await generateSingleImageWithComposition(
+        masterPrompt,
+        referenceImageBuffers,
+        hasCompositionRef ? compositionImageBuffers[perspectiveId] : null
+      );
       results.push({
         perspectiveId,
         perspectiveName: perspectiveId,
