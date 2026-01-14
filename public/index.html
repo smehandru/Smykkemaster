@@ -1540,12 +1540,6 @@
     async function generateImages() {
       if (!currentSession) return;
 
-      // Check if any perspectives are selected
-      if (selectedPerspectives.length === 0) {
-        showStatus('Velg minst én komposisjon i Perspektiv-menyen', 'warning', false);
-        return;
-      }
-
       const btn = document.getElementById('generateBtn');
       const spinner = btn.querySelector('.btn-spinner');
       const text = btn.querySelector('.btn-text');
@@ -1554,6 +1548,31 @@
       btn.classList.add('loading');
       spinner.classList.remove('hidden');
       text.textContent = 'Forbereder...';
+
+      // If no perspectives selected, auto-fetch and select all
+      if (selectedPerspectives.length === 0) {
+        showStatus('Henter tilgjengelige perspektiver...', 'info', true);
+        try {
+          const perspRes = await fetch(`/api/perspectives/${currentSession.category}`);
+          const perspData = await perspRes.json();
+          if (perspData.perspectives && perspData.perspectives.length > 0) {
+            availablePerspectives = perspData.perspectives;
+            selectedPerspectives = perspData.perspectives.map(p => p.id);
+            console.log('Auto-selected all perspectives:', selectedPerspectives.length);
+          }
+        } catch (e) {
+          console.warn('Could not fetch perspectives:', e);
+        }
+      }
+
+      // Still no perspectives? Show error
+      if (selectedPerspectives.length === 0) {
+        showStatus('Ingen perspektiver funnet for denne kategorien', 'error', false);
+        btn.classList.remove('loading');
+        spinner.classList.add('hidden');
+        text.textContent = 'Generer bilder';
+        return;
+      }
 
       // Auto-generate master prompts if not already done
       if (Object.keys(masterPrompts).length === 0) {
