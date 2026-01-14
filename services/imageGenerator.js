@@ -377,6 +377,87 @@ ${prompt}`;
   });
 }
 
+// Generate images directly using composition system (simplified - no Gemini master prompt step)
+// Sends: product images + composition image + combined instructions directly to Nano Banana Pro
+async function generateDirectFromComposition(perspectives, visualDescriptor, referenceImageBuffers, compositionImageBuffers = {}) {
+  const results = [];
+
+  console.log(`\n=== Starting DIRECT generation with Nano Banana Pro (simplified workflow) ===`);
+  console.log(`Product images: ${referenceImageBuffers.length}`);
+  console.log(`Visual descriptor: ${visualDescriptor.substring(0, 100)}...`);
+  console.log(`Perspectives to generate: ${perspectives.length}\n`);
+
+  for (let i = 0; i < perspectives.length; i++) {
+    const perspective = perspectives[i];
+    const perspectiveId = perspective.id;
+    const compositionPrompt = perspective.prompt;
+
+    const hasCompositionRef = !!compositionImageBuffers[perspectiveId];
+    console.log(`[${i + 1}/${perspectives.length}] Generating: ${perspectiveId} (composition ref: ${hasCompositionRef})`);
+
+    // Build combined prompt directly for Nano Banana Pro
+    const combinedPrompt = buildCombinedPrompt(visualDescriptor, compositionPrompt, referenceImageBuffers.length, hasCompositionRef);
+
+    try {
+      const result = await generateSingleImageWithComposition(
+        combinedPrompt,
+        referenceImageBuffers,
+        hasCompositionRef ? compositionImageBuffers[perspectiveId] : null
+      );
+      results.push({
+        perspectiveId,
+        perspectiveName: perspective.name || perspectiveId,
+        imageNumber: i + 1,
+        ...result
+      });
+      console.log(`✓ ${perspectiveId} completed`);
+    } catch (error) {
+      console.error(`✗ Failed to generate ${perspectiveId}:`, error.message);
+      results.push({
+        perspectiveId,
+        perspectiveName: perspective.name || perspectiveId,
+        imageNumber: i + 1,
+        success: false,
+        error: error.message
+      });
+    }
+  }
+
+  const successCount = results.filter(r => r.success).length;
+  console.log(`\n=== Generation complete: ${successCount}/${perspectives.length} successful ===\n`);
+
+  return results;
+}
+
+// Build combined prompt for direct generation (no Gemini step)
+function buildCombinedPrompt(visualDescriptor, compositionPrompt, numProductImages, hasComposition) {
+  return `Generate an ultra high-definition 2K luxury jewelry editorial photograph.
+
+=== JEWELRY DESIGN (from product images 1-${numProductImages}) ===
+${visualDescriptor}
+
+CRITICAL: Copy EVERY detail of the jewelry EXACTLY from the product images - shape, texture, finish, patterns, stones, metalwork. The jewelry design must match the product images 100%.
+
+${hasComposition ? `=== COMPOSITION & STYLING (from image ${numProductImages + 1} - the LAST image) ===
+${compositionPrompt}
+
+Use the composition reference ONLY for:
+- Camera angle and framing
+- Lighting setup and direction
+- Background and environment
+- Overall mood and atmosphere
+
+⚠️ DO NOT copy ANY jewelry design from the composition reference - it shows a DIFFERENT piece.` : `=== COMPOSITION & STYLING ===
+${compositionPrompt}`}
+
+=== REQUIREMENTS ===
+- 2K resolution, photorealistic quality
+- No CGI look, no artificial appearance
+- No text, logos, or watermarks
+- Professional luxury jewelry photography
+- Jewelry must match product images exactly`;
+}
+
 // Generate images using composition prompts and master prompts (new system)
 async function generateFromMasterPrompts(masterPrompts, referenceImageBuffers, compositionImageBuffers = {}) {
   const results = [];
@@ -468,6 +549,8 @@ module.exports = {
   generateSingleImage,
   generateAllPerspectives,
   generateFromMasterPrompts,
+  generateDirectFromComposition,
+  buildCombinedPrompt,
   regenerateImage,
   regenerateSingleImage,
   getPerspectives,

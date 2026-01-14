@@ -299,11 +299,12 @@ app.post('/api/generate/:sessionId', requireAuth, async (req, res) => {
   });
 });
 
-// Background generation function - ALWAYS uses new composition-based system
+// Background generation function - SIMPLIFIED: sends directly to Nano Banana Pro
+// No intermediate Gemini master prompt step - combines visual descriptor + composition prompt directly
 async function generateImages(session) {
   try {
     const referenceBuffers = session.rawImages.map(img => img.buffer);
-    console.log(`Starting image generation for session ${session.id}`);
+    console.log(`Starting DIRECT image generation for session ${session.id}`);
 
     // Load composition perspectives for this category
     const { getPerspectivesForCategory } = require('./config/compositionPrompts');
@@ -313,51 +314,26 @@ async function generateImages(session) {
       throw new Error(`No composition perspectives found for category: ${session.category}`);
     }
 
-    // If no master prompts exist, generate them now using Gemini 3 Pro
-    if (!session.masterPrompts || Object.keys(session.masterPrompts).length === 0) {
-      console.log('No master prompts found, generating with Gemini 3 Pro...');
+    const visualDescriptor = session.visualDescriptor || 'A beautiful 22 karat gold jewelry piece';
 
-      const visualDescriptor = session.visualDescriptor || 'A beautiful 22 karat gold jewelry piece';
-      session.masterPrompts = {};
-
-      for (const p of perspectives) {
-        try {
-          const compositionImageBuffer = await loadCompositionImage(session.category, p.imageFile);
-
-          console.log(`Generating master prompt for ${p.id}...`);
-          const masterPrompt = await gemini.generateMasterPrompt(
-            visualDescriptor,
-            p.prompt,
-            session.category,
-            referenceBuffers,
-            compositionImageBuffer
-          );
-          session.masterPrompts[p.id] = masterPrompt;
-        } catch (e) {
-          console.error(`Failed to generate master prompt for ${p.id}:`, e.message);
-          // Use composition prompt directly as simple fallback (NOT old legacy prompts)
-          session.masterPrompts[p.id] = `Ultra high-definition 2K luxury jewelry editorial photograph. ${visualDescriptor} ${p.prompt} Professional studio lighting, photorealistic quality, no CGI artifacts.`;
-        }
-      }
-    }
-
-    // Load composition reference images for each perspective being generated
+    // Load composition reference images for each perspective
     const compositionImageBuffers = {};
     for (const p of perspectives) {
-      if (session.masterPrompts[p.id]) {
-        const imgBuffer = await loadCompositionImage(session.category, p.imageFile);
-        if (imgBuffer) {
-          compositionImageBuffers[p.id] = imgBuffer;
-          console.log(`Loaded composition image for ${p.id}: ${p.imageFile}`);
-        }
+      const imgBuffer = await loadCompositionImage(session.category, p.imageFile);
+      if (imgBuffer) {
+        compositionImageBuffers[p.id] = imgBuffer;
+        console.log(`Loaded composition image for ${p.id}: ${p.imageFile}`);
       }
     }
 
-    console.log(`Using composition-based system with ${Object.keys(session.masterPrompts).length} master prompts`);
+    console.log(`Using SIMPLIFIED direct workflow`);
+    console.log(`Visual descriptor: ${visualDescriptor.substring(0, 80)}...`);
     console.log(`Loaded ${Object.keys(compositionImageBuffers).length} composition reference images`);
 
-    const results = await imageGenerator.generateFromMasterPrompts(
-      session.masterPrompts,
+    // Generate directly - no Gemini master prompt step
+    const results = await imageGenerator.generateDirectFromComposition(
+      perspectives,
+      visualDescriptor,
       referenceBuffers,
       compositionImageBuffers
     );
@@ -403,7 +379,7 @@ app.get('/api/generated/:sessionId', requireAuth, (req, res) => {
   });
 });
 
-// Regenerate specific image - uses new composition-based system
+// Regenerate specific image - SIMPLIFIED: direct to Nano Banana Pro
 app.post('/api/regenerate/:sessionId/:perspectiveId', requireAuth, async (req, res) => {
   const session = activeSessions.get(req.params.sessionId);
   if (!session) {
@@ -422,42 +398,28 @@ app.post('/api/regenerate/:sessionId/:perspectiveId', requireAuth, async (req, r
     const perspectives = getPerspectivesForCategory(session.category);
     const perspective = perspectives.find(p => p.id === perspectiveId);
 
-    // Get or generate master prompt for this perspective
-    let masterPrompt = customPrompt;
-    let compositionImageBuffer = null;
-
-    if (!masterPrompt) {
-      // Use stored master prompt if available
-      if (session.masterPrompts && session.masterPrompts[perspectiveId]) {
-        masterPrompt = session.masterPrompts[perspectiveId];
-      } else if (perspective) {
-        // Generate new master prompt using Gemini 3 Pro
-        compositionImageBuffer = await loadCompositionImage(session.category, perspective.imageFile);
-        masterPrompt = await gemini.generateMasterPrompt(
-          session.visualDescriptor || 'A beautiful 22 karat gold jewelry piece',
-          perspective.prompt,
-          session.category,
-          referenceBuffers,
-          compositionImageBuffer
-        );
-        // Store for future use
-        if (!session.masterPrompts) session.masterPrompts = {};
-        session.masterPrompts[perspectiveId] = masterPrompt;
-      } else {
-        throw new Error(`Unknown perspective: ${perspectiveId}`);
-      }
+    if (!perspective) {
+      throw new Error(`Unknown perspective: ${perspectiveId}`);
     }
 
-    // Load composition image if not already loaded
-    if (!compositionImageBuffer && perspective) {
-      compositionImageBuffer = await loadCompositionImage(session.category, perspective.imageFile);
-    }
+    // Load composition image
+    const compositionImageBuffer = await loadCompositionImage(session.category, perspective.imageFile);
+    const hasComposition = !!compositionImageBuffer;
 
-    console.log(`Regenerating ${perspectiveId} with composition-based system`);
+    // Build combined prompt directly (no Gemini step)
+    const visualDescriptor = session.visualDescriptor || 'A beautiful 22 karat gold jewelry piece';
+    const combinedPrompt = customPrompt || imageGenerator.buildCombinedPrompt(
+      visualDescriptor,
+      perspective.prompt,
+      referenceBuffers.length,
+      hasComposition
+    );
 
-    // Use the new composition-aware generation
+    console.log(`Regenerating ${perspectiveId} with SIMPLIFIED direct workflow`);
+
+    // Use composition-aware generation directly
     const result = await imageGenerator.regenerateSingleImage(
-      masterPrompt,
+      combinedPrompt,
       referenceBuffers,
       compositionImageBuffer
     );
@@ -470,7 +432,7 @@ app.post('/api/regenerate/:sessionId/:perspectiveId', requireAuth, async (req, r
     if (imageIndex >= 0) {
       session.generatedImages[imageIndex] = {
         perspectiveId,
-        perspectiveName: perspective ? perspective.name : perspectiveId,
+        perspectiveName: perspective.name || perspectiveId,
         imageNumber: session.generatedImages[imageIndex].imageNumber,
         success: result.success,
         imageBase64: result.success ? result.imageBuffer.toString('base64') : null,
@@ -483,7 +445,7 @@ app.post('/api/regenerate/:sessionId/:perspectiveId', requireAuth, async (req, r
       success: true,
       image: {
         perspectiveId,
-        perspectiveName: perspective ? perspective.name : perspectiveId,
+        perspectiveName: perspective.name || perspectiveId,
         success: result.success,
         imageBase64: result.success ? result.imageBuffer.toString('base64') : null,
         error: result.error
