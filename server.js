@@ -249,19 +249,17 @@ app.post('/api/generate/:sessionId', requireAuth, async (req, res) => {
     return res.status(400).json({ error: 'Analysis not complete' });
   }
 
-  // Store custom prompts from request
-  const { customPrompts } = req.body || {};
+  // Store custom prompts and selected perspectives from request
+  const { customPrompts, selectedPerspectives } = req.body || {};
 
-  // Merge custom prompts into master prompts (custom prompts override master prompts)
-  if (session.masterPrompts && customPrompts && Object.keys(customPrompts).length > 0) {
-    Object.keys(customPrompts).forEach(key => {
-      if (customPrompts[key]) {
-        session.masterPrompts[key] = customPrompts[key];
-      }
-    });
-    console.log('Merged custom prompts into master prompts');
+  // If custom prompts provided, use them as master prompts
+  if (customPrompts && Object.keys(customPrompts).length > 0) {
+    session.masterPrompts = customPrompts;
+    console.log('Using filtered prompts for generation');
   }
 
+  // Store selected perspectives
+  session.selectedPerspectives = selectedPerspectives || [];
   session.customPrompts = customPrompts || {};
   session.status = 'generating';
   session.generatedImages = [];

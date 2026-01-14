@@ -875,7 +875,8 @@
         <p style="color: var(--text-muted); margin-bottom: 1rem;">Velg kategori først for å se referansebilder for plassering, lys og stil.</p>
       </div>
       <div class="prompt-modal-footer">
-        <button class="btn btn-outline" onclick="closePerspectiveModal()">Lukk</button>
+        <button class="btn btn-outline" onclick="closePerspectiveModal()">Avbryt</button>
+        <button class="btn btn-gold" onclick="savePerspectiveSelection()">Lagre valg</button>
       </div>
     </div>
   </div>
@@ -1170,7 +1171,12 @@
     }
 
     // Update button when category changes
-    document.getElementById('categorySelect')?.addEventListener('change', updateUploadButton);
+    document.getElementById('categorySelect')?.addEventListener('change', () => {
+      updateUploadButton();
+      // Reset selected perspectives when category changes
+      selectedPerspectives = [];
+      availablePerspectives = [];
+    });
 
     // Upload and analyze
     async function uploadImages() {
@@ -1232,7 +1238,6 @@
 
         if (data.success) {
           currentSession.category = category;
-          currentSession.ethnicity = ethnicity;
           currentSession.status = 'analyzing';
           saveSessionToStorage();
 
@@ -1349,6 +1354,9 @@
     }
 
     // Perspective Modal functions
+    let selectedPerspectives = [];
+    let availablePerspectives = [];
+
     async function openPerspectiveModal() {
       const category = document.getElementById('categorySelect').value;
 
@@ -1362,6 +1370,11 @@
         const data = await res.json();
 
         if (data.perspectives) {
+          availablePerspectives = data.perspectives;
+          // Default: select all perspectives
+          if (selectedPerspectives.length === 0) {
+            selectedPerspectives = data.perspectives.map(p => p.id);
+          }
           renderPerspectiveModal(data.perspectives, category);
           document.getElementById('perspectiveModal').classList.remove('hidden');
         }
@@ -1381,29 +1394,75 @@
         'anheng': 'Anheng'
       };
 
+      const allSelected = perspectives.every(p => selectedPerspectives.includes(p.id));
+
       body.innerHTML = `
-        <h4 style="color: var(--gold); margin-bottom: 1rem;">${categoryNames[category]} - ${perspectives.length} perspektiver</h4>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h4 style="color: var(--gold); margin: 0;">${categoryNames[category]} - ${perspectives.length} perspektiver</h4>
+          <div>
+            <button class="btn btn-outline" onclick="toggleAllPerspectives()" style="font-size: 0.85rem; padding: 0.4rem 0.8rem;">
+              ${allSelected ? 'Fjern alle' : 'Velg alle'}
+            </button>
+          </div>
+        </div>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem;">
+          Valgt: <strong style="color: var(--gold);">${selectedPerspectives.length}</strong> av ${perspectives.length} komposisjoner
+        </p>
         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem;">
-          ${perspectives.map((p, index) => `
-            <div style="background: var(--bg-dark); border-radius: 8px; overflow: hidden;">
-              <img src="/references/${category}/${p.imageFile}"
-                   alt="${p.name}"
-                   style="width: 100%; height: 180px; object-fit: cover; background: #333;"
-                   onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%23333%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2255%22 text-anchor=%22middle%22 fill=%22%23666%22 font-size=%2212%22>Bilde ${index + 1}</text></svg>'">
+          ${perspectives.map((p, index) => {
+            const isSelected = selectedPerspectives.includes(p.id);
+            return `
+            <div onclick="togglePerspective('${p.id}')"
+                 style="background: var(--bg-dark); border-radius: 8px; overflow: hidden; cursor: pointer; border: 2px solid ${isSelected ? 'var(--gold)' : 'transparent'}; transition: border-color 0.2s;">
+              <div style="position: relative;">
+                <img src="/references/${category}/${p.imageFile}"
+                     alt="${p.name}"
+                     style="width: 100%; height: 180px; object-fit: cover; background: #333; opacity: ${isSelected ? '1' : '0.5'}; transition: opacity 0.2s;"
+                     onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%23333%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2255%22 text-anchor=%22middle%22 fill=%22%23666%22 font-size=%2212%22>Bilde ${index + 1}</text></svg>'">
+                <div style="position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; border-radius: 50%; background: ${isSelected ? 'var(--gold)' : 'rgba(0,0,0,0.5)'}; border: 2px solid ${isSelected ? 'var(--gold)' : '#666'}; display: flex; align-items: center; justify-content: center;">
+                  ${isSelected ? '<span style="color: #000; font-size: 14px;">✓</span>' : ''}
+                </div>
+              </div>
               <div style="padding: 0.75rem;">
-                <strong style="color: var(--gold);">${index + 1}. ${p.name}</strong>
+                <strong style="color: ${isSelected ? 'var(--gold)' : 'var(--text-muted)'};">${index + 1}. ${p.name}</strong>
                 <p style="color: var(--text-muted); font-size: 0.8rem; margin-top: 0.5rem; max-height: 60px; overflow-y: auto;">
                   ${p.prompt.substring(0, 150)}...
                 </p>
               </div>
             </div>
-          `).join('')}
+          `}).join('')}
         </div>
       `;
     }
 
+    function togglePerspective(id) {
+      if (selectedPerspectives.includes(id)) {
+        selectedPerspectives = selectedPerspectives.filter(p => p !== id);
+      } else {
+        selectedPerspectives.push(id);
+      }
+      const category = document.getElementById('categorySelect').value;
+      renderPerspectiveModal(availablePerspectives, category);
+    }
+
+    function toggleAllPerspectives() {
+      const allSelected = availablePerspectives.every(p => selectedPerspectives.includes(p.id));
+      if (allSelected) {
+        selectedPerspectives = [];
+      } else {
+        selectedPerspectives = availablePerspectives.map(p => p.id);
+      }
+      const category = document.getElementById('categorySelect').value;
+      renderPerspectiveModal(availablePerspectives, category);
+    }
+
     function closePerspectiveModal() {
       document.getElementById('perspectiveModal').classList.add('hidden');
+    }
+
+    function savePerspectiveSelection() {
+      closePerspectiveModal();
+      showStatus(`${selectedPerspectives.length} komposisjoner valgt`, 'success', false);
     }
 
     // Advanced Modal functions (Master Rendering Prompts)
@@ -1479,6 +1538,12 @@
     async function generateImages() {
       if (!currentSession) return;
 
+      // Check if any perspectives are selected
+      if (selectedPerspectives.length === 0) {
+        showStatus('Velg minst én komposisjon i Perspektiv-menyen', 'warning', false);
+        return;
+      }
+
       const btn = document.getElementById('generateBtn');
       const spinner = btn.querySelector('.btn-spinner');
       const text = btn.querySelector('.btn-text');
@@ -1503,14 +1568,23 @@
         }
       }
 
+      // Filter prompts to only selected perspectives
+      const filteredPrompts = {};
+      const promptSource = Object.keys(customPrompts).length > 0 ? customPrompts : masterPrompts;
+      for (const id of selectedPerspectives) {
+        if (promptSource[id]) {
+          filteredPrompts[id] = promptSource[id];
+        }
+      }
+
       text.textContent = 'Genererer...';
-      showStatus('Starter bildegenerering...', 'info', true);
+      showStatus(`Genererer ${selectedPerspectives.length} bilder...`, 'info', true);
 
       try {
         const res = await fetch(`/api/generate/${currentSession.id}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ customPrompts: Object.keys(customPrompts).length > 0 ? customPrompts : masterPrompts })
+          body: JSON.stringify({ customPrompts: filteredPrompts, selectedPerspectives })
         });
 
         const data = await res.json();
