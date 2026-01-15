@@ -756,6 +756,85 @@ TECHNICAL REQUIREMENTS:
 - Clean, minimalist aesthetic suitable for high-end e-commerce`;
 }
 
+// Get complete Nano Banana Pro input details for transparency
+app.get('/api/nano-banana-input/:sessionId', requireAuth, async (req, res) => {
+  const session = activeSessions.get(req.params.sessionId);
+  if (!session) {
+    return res.status(404).json({ error: 'Session not found' });
+  }
+
+  if (!session.category) {
+    return res.status(400).json({ error: 'Session has no category' });
+  }
+
+  const { getPerspectivesForCategory } = require('./config/compositionPrompts');
+  const perspectives = getPerspectivesForCategory(session.category);
+
+  if (!perspectives || perspectives.length === 0) {
+    return res.status(404).json({ error: 'No perspectives found for category' });
+  }
+
+  const visualDescriptor = session.visualDescriptor || '[Visual descriptor not yet generated]';
+  const productImageCount = session.rawImages ? session.rawImages.length : 0;
+
+  // Build detailed input for each perspective
+  const perspectiveInputs = [];
+
+  for (const p of perspectives) {
+    const hasCompositionRef = !!p.imageFile;
+
+    // Build the exact prompt that would be sent to Nano Banana Pro
+    const combinedPrompt = imageGenerator.buildCombinedPrompt(
+      visualDescriptor,
+      p.prompt,
+      productImageCount,
+      hasCompositionRef
+    );
+
+    perspectiveInputs.push({
+      perspectiveId: p.id,
+      perspectiveName: p.name || p.id,
+      imageFile: p.imageFile || 'none',
+      compositionPrompt: p.prompt,
+      fullPromptToNanoBananaPro: combinedPrompt,
+      images: {
+        productImages: {
+          count: productImageCount,
+          description: session.rawImages ? session.rawImages.map((img, i) => `Image ${i + 1}: ${img.originalName}`).join(', ') : 'No images'
+        },
+        compositionReferenceImage: {
+          present: hasCompositionRef,
+          file: p.imageFile || null,
+          position: hasCompositionRef ? `Image ${productImageCount + 1} (LAST)` : null
+        }
+      }
+    });
+  }
+
+  res.json({
+    sessionId: session.id,
+    category: session.category,
+    model: 'gemini-2.0-flash-exp (Nano Banana Pro)',
+    globalVisualDescriptor: visualDescriptor,
+    productImageCount,
+    perspectiveCount: perspectives.length,
+    technicalRequirements: {
+      resolution: '2K (2048x2048 minimum)',
+      responseModality: 'image',
+      noCGI: true,
+      noWatermarks: true,
+      photorealistic: true,
+      safetySettings: [
+        'HARM_CATEGORY_DANGEROUS_CONTENT: BLOCK_ONLY_HIGH',
+        'HARM_CATEGORY_HARASSMENT: BLOCK_ONLY_HIGH',
+        'HARM_CATEGORY_HATE_SPEECH: BLOCK_ONLY_HIGH',
+        'HARM_CATEGORY_SEXUALLY_EXPLICIT: BLOCK_ONLY_HIGH'
+      ]
+    },
+    perspectives: perspectiveInputs
+  });
+});
+
 // =============================================================================
 // CHATBOT ROUTES (for image regeneration chat)
 // =============================================================================

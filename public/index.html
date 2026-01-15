@@ -881,19 +881,18 @@
     </div>
   </div>
 
-  <!-- Advanced Modal (Master Prompts) -->
+  <!-- Advanced Modal (Nano Banana Pro Input Details) -->
   <div id="advancedModal" class="prompt-modal hidden">
     <div class="prompt-modal-content">
       <div class="prompt-modal-header">
-        <h3>Master Rendering Prompts</h3>
+        <h3>Nano Banana Pro - Complete Input Details</h3>
         <button class="prompt-modal-close" onclick="closeAdvancedModal()">&times;</button>
       </div>
       <div class="prompt-modal-body" id="advancedModalBody">
-        <!-- Master prompts will be inserted here -->
+        <!-- Nano Banana Pro input details will be inserted here -->
       </div>
       <div class="prompt-modal-footer">
-        <button class="btn btn-outline" onclick="closeAdvancedModal()">Avbryt</button>
-        <button class="btn btn-gold" onclick="saveMasterPrompts()">Lagre endringer</button>
+        <button class="btn btn-gold" onclick="closeAdvancedModal()">Lukk</button>
       </div>
     </div>
   </div>
@@ -1210,6 +1209,9 @@
       selectedFiles = filesToUpload;
       document.getElementById('categorySelect').value = category;
 
+      // Restore the preview grid UI
+      updatePreviewGrid();
+
       // Update button to show analyzing state
       const btn = document.getElementById('uploadBtn');
       const spinner = btn.querySelector('.btn-spinner');
@@ -1473,7 +1475,7 @@
       showStatus(`${selectedPerspectives.length} komposisjoner valgt`, 'success', false);
     }
 
-    // Advanced Modal functions (Master Rendering Prompts)
+    // Advanced Modal functions (Nano Banana Pro Input Display)
     let masterPrompts = {};
 
     async function openAdvancedModal() {
@@ -1487,59 +1489,109 @@
       body.innerHTML = `
         <div style="text-align: center; padding: 3rem;">
           <div class="skeleton-shimmer" style="width: 60px; height: 60px; border-radius: 50%; margin: 0 auto 1rem;"></div>
-          <p style="color: var(--gold);">Genererer master prompts med AI...</p>
-          <p style="color: var(--text-muted); font-size: 0.9rem;">Bruker Gemini thinking model for optimal kvalitet</p>
+          <p style="color: var(--gold);">Henter Nano Banana Pro input detaljer...</p>
+          <p style="color: var(--text-muted); font-size: 0.9rem;">Viser komplett input som sendes til modellen</p>
         </div>
       `;
       document.getElementById('advancedModal').classList.remove('hidden');
 
       try {
-        const res = await fetch(`/api/master-prompts/${currentSession.id}`);
+        const res = await fetch(`/api/nano-banana-input/${currentSession.id}`);
         const data = await res.json();
 
-        if (data.masterPrompts) {
-          masterPrompts = data.masterPrompts;
-          renderAdvancedModal(data.masterPrompts, data.visualDescriptor);
+        if (data.perspectives) {
+          renderAdvancedModal(data);
         } else {
-          body.innerHTML = '<p style="color: var(--text-muted);">Ingen master prompts generert ennå.</p>';
+          body.innerHTML = '<p style="color: var(--text-muted);">Ingen data tilgjengelig ennå.</p>';
         }
       } catch (error) {
-        console.error('Failed to fetch master prompts:', error);
-        body.innerHTML = '<p style="color: #ff6b6b;">Feil ved henting av master prompts. Prøv igjen.</p>';
-        showStatus('Kunne ikke hente master prompts', 'error', false);
+        console.error('Failed to fetch Nano Banana Pro input:', error);
+        body.innerHTML = '<p style="color: #ff6b6b;">Feil ved henting av data. Prøv igjen.</p>';
+        showStatus('Kunne ikke hente data', 'error', false);
       }
     }
 
-    function renderAdvancedModal(prompts, visualDescriptor) {
+    function renderAdvancedModal(data) {
       const body = document.getElementById('advancedModalBody');
 
-      const headerHtml = visualDescriptor ? `
-        <div class="prompt-item" style="background: var(--bg-dark); padding: 1rem; border-radius: 4px; margin-bottom: 1.5rem;">
-          <label style="color: var(--gold);">Global Visual Descriptor (fra Gemini)</label>
-          <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.5rem; white-space: pre-wrap;">${visualDescriptor}</p>
+      const headerHtml = `
+        <div style="background: var(--bg-dark); padding: 1.5rem; border-radius: 4px; margin-bottom: 1.5rem; border-left: 3px solid var(--gold);">
+          <h4 style="color: var(--gold); margin-bottom: 1rem;">🤖 Nano Banana Pro Input Overview</h4>
+          <div style="display: grid; gap: 0.5rem; color: var(--text-muted); font-size: 0.9rem;">
+            <div><strong style="color: var(--gold);">Model:</strong> ${data.model}</div>
+            <div><strong style="color: var(--gold);">Session ID:</strong> ${data.sessionId}</div>
+            <div><strong style="color: var(--gold);">Category:</strong> ${data.category}</div>
+            <div><strong style="color: var(--gold);">Product Images:</strong> ${data.productImageCount} images</div>
+            <div><strong style="color: var(--gold);">Perspectives:</strong> ${data.perspectiveCount} compositions</div>
+          </div>
         </div>
-      ` : '';
 
-      body.innerHTML = headerHtml + Object.entries(prompts).map(([perspectiveId, prompt]) => `
-        <div class="prompt-item">
-          <label style="color: var(--gold);">Master Prompt: ${perspectiveId}</label>
-          <textarea id="master_${perspectiveId}" data-perspective-id="${perspectiveId}" style="min-height: 150px;">${customPrompts[perspectiveId] || prompt}</textarea>
+        <div style="background: var(--bg-dark); padding: 1.5rem; border-radius: 4px; margin-bottom: 1.5rem;">
+          <h4 style="color: var(--gold); margin-bottom: 0.75rem;">📝 Global Visual Descriptor</h4>
+          <p style="color: var(--text-light); font-size: 0.9rem; white-space: pre-wrap; line-height: 1.6;">${data.globalVisualDescriptor}</p>
         </div>
+
+        <div style="background: var(--bg-dark); padding: 1.5rem; border-radius: 4px; margin-bottom: 1.5rem;">
+          <h4 style="color: var(--gold); margin-bottom: 0.75rem;">⚙️ Technical Requirements</h4>
+          <ul style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.8; margin-left: 1.5rem;">
+            <li><strong>Resolution:</strong> ${data.technicalRequirements.resolution}</li>
+            <li><strong>Response Modality:</strong> ${data.technicalRequirements.responseModality}</li>
+            <li><strong>No CGI:</strong> ${data.technicalRequirements.noCGI ? 'Yes' : 'No'}</li>
+            <li><strong>No Watermarks:</strong> ${data.technicalRequirements.noWatermarks ? 'Yes' : 'No'}</li>
+            <li><strong>Photorealistic:</strong> ${data.technicalRequirements.photorealistic ? 'Yes' : 'No'}</li>
+            <li><strong>Safety Settings:</strong>
+              <ul style="margin-top: 0.5rem;">
+                ${data.technicalRequirements.safetySettings.map(s => `<li>${s}</li>`).join('')}
+              </ul>
+            </li>
+          </ul>
+        </div>
+
+        <h4 style="color: var(--gold); margin-bottom: 1rem; border-bottom: 1px solid var(--gold-dark); padding-bottom: 0.5rem;">📸 Per-Perspective Input Details</h4>
+      `;
+
+      const perspectivesHtml = data.perspectives.map((p, index) => `
+        <details style="background: var(--bg-dark); padding: 1rem; border-radius: 4px; margin-bottom: 1rem; border: 1px solid var(--gold-dark);" ${index === 0 ? 'open' : ''}>
+          <summary style="cursor: pointer; color: var(--gold); font-weight: 600; user-select: none;">
+            ${index + 1}. ${p.perspectiveName} (${p.perspectiveId})
+          </summary>
+          <div style="margin-top: 1rem; padding-left: 0.5rem;">
+
+            <div style="margin-bottom: 1rem;">
+              <strong style="color: var(--gold); display: block; margin-bottom: 0.5rem;">🖼️ Images Sent:</strong>
+              <div style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.6;">
+                <div style="margin-bottom: 0.5rem;">
+                  <strong style="color: var(--text-light);">Product Images (${p.images.productImages.count}):</strong><br>
+                  ${p.images.productImages.description}
+                </div>
+                <div>
+                  <strong style="color: var(--text-light);">Composition Reference Image:</strong><br>
+                  ${p.images.compositionReferenceImage.present
+                    ? `✅ ${p.images.compositionReferenceImage.file} (Position: ${p.images.compositionReferenceImage.position})`
+                    : '❌ None'}
+                </div>
+              </div>
+            </div>
+
+            <div style="margin-bottom: 1rem;">
+              <strong style="color: var(--gold); display: block; margin-bottom: 0.5rem;">📋 Composition Prompt:</strong>
+              <pre style="background: rgba(0,0,0,0.3); padding: 0.75rem; border-radius: 4px; color: var(--text-light); font-size: 0.8rem; white-space: pre-wrap; line-height: 1.5; overflow-x: auto;">${p.compositionPrompt}</pre>
+            </div>
+
+            <div>
+              <strong style="color: var(--gold); display: block; margin-bottom: 0.5rem;">✨ Full Prompt to Nano Banana Pro:</strong>
+              <pre style="background: rgba(0,0,0,0.3); padding: 0.75rem; border-radius: 4px; color: var(--text-light); font-size: 0.8rem; white-space: pre-wrap; line-height: 1.5; overflow-x: auto; max-height: 400px; overflow-y: auto;">${p.fullPromptToNanoBananaPro}</pre>
+            </div>
+
+          </div>
+        </details>
       `).join('');
+
+      body.innerHTML = headerHtml + perspectivesHtml;
     }
 
     function closeAdvancedModal() {
       document.getElementById('advancedModal').classList.add('hidden');
-    }
-
-    function saveMasterPrompts() {
-      const textareas = document.querySelectorAll('#advancedModalBody textarea');
-      textareas.forEach(ta => {
-        const perspectiveId = ta.dataset.perspectiveId;
-        customPrompts[perspectiveId] = ta.value;
-      });
-      closeAdvancedModal();
-      showStatus('Master prompts lagret', 'success', false);
     }
 
     // Image generation
