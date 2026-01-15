@@ -285,7 +285,7 @@ Do not use generic "softbox" terms. Use professional lighting architecture:
 - SPECULARITY: Command "brilliant, controlled specular highlights" along the sharpest metal edges and gemstone facets to create "fire" and "brilliance" without washing out details.
 
 # ORGANIC SURFACES & GROUNDING
-To match the user's uploaded aesthetic (beige stone, clay, matte textures):
+To match the user's uploaded aesthetic:
 - ENVIRONMENT: Command randomly between hyperglossed pure white bakground or "tactile, organic matte surfaces" such as fine-grained beige stone or neutral emerald green mineral slabs.
 - PHYSICS: Command "ambient occlusion contact shadows" exactly where the jewelry touches the surface to provide a realistic sense of weight and 3D volume. No "floating" appearance.
 
