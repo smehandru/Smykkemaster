@@ -511,6 +511,48 @@
       color: white;
     }
 
+    .drive-existence-status {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      margin-bottom: 1rem;
+      border-radius: 8px;
+      background: var(--bg-secondary);
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    .drive-existence-status.new-product {
+      background: rgba(16, 185, 129, 0.1);
+      color: var(--success);
+      border: 1px solid var(--success);
+    }
+
+    .drive-existence-status.exists-warning {
+      background: rgba(251, 191, 36, 0.1);
+      color: var(--warning);
+      border: 1px solid var(--warning);
+    }
+
+    .drive-existence-status .check-icon {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 2px solid currentColor;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      flex-shrink: 0;
+    }
+
+    .drive-existence-status.new-product .check-icon {
+      background: var(--success);
+      border-color: var(--success);
+      color: white;
+    }
+
     /* Image Modal */
     .modal-overlay {
       position: fixed;
@@ -837,6 +879,12 @@
       <section id="saveSection" class="save-section hidden">
         <h2>Lagre til Google</h2>
 
+        <!-- Drive Existence Check -->
+        <div id="driveExistenceStatus" class="drive-existence-status hidden">
+          <span class="check-icon">✓</span>
+          <span id="driveExistenceText">Sjekker Google Drive...</span>
+        </div>
+
         <button id="saveBtn" class="btn btn-gold" onclick="saveToSheets()">
           <span class="btn-text">Lagre til Google Sheets</span>
           <span class="btn-spinner hidden">⟳</span>
@@ -1017,6 +1065,8 @@
       document.getElementById('saveStatus').classList.add('hidden');
       document.getElementById('driveStatus').classList.remove('completed');
       document.getElementById('sheetsStatus').classList.remove('completed');
+      document.getElementById('driveExistenceStatus').classList.add('hidden');
+      document.getElementById('driveExistenceStatus').classList.remove('new-product', 'exists-warning');
       document.getElementById('categorySelect').value = '';
       document.getElementById('uploadBtn').disabled = true;
       document.getElementById('statusBar').classList.add('hidden');
@@ -1027,6 +1077,7 @@
       // Reset perspectives
       selectedPerspectives = [];
       availablePerspectives = [];
+      perspectiveModalOpened = false;
     }
 
     function saveSessionToStorage() {
@@ -1177,6 +1228,7 @@
       // Reset selected perspectives when category changes
       selectedPerspectives = [];
       availablePerspectives = [];
+      perspectiveModalOpened = false;
     });
 
     // Upload and analyze
@@ -1357,6 +1409,11 @@
           body: JSON.stringify({ tagInfo, productDescription })
         });
 
+        // Check Drive existence if product ID was updated and save section is visible
+        if (tagInfo.productId && !document.getElementById('saveSection').classList.contains('hidden')) {
+          checkDriveExistence(tagInfo.productId);
+        }
+
         showStatus('Analyse oppdatert', 'success', false);
       } catch (error) {
         showStatus('Oppdatering feilet', 'error', false);
@@ -1366,6 +1423,7 @@
     // Perspective Modal functions
     let selectedPerspectives = [];
     let availablePerspectives = [];
+    let perspectiveModalOpened = false; // Track if user has explicitly opened the modal
 
     async function openPerspectiveModal() {
       const category = document.getElementById('categorySelect').value;
@@ -1381,10 +1439,11 @@
 
         if (data.perspectives) {
           availablePerspectives = data.perspectives;
-          // Default: select all perspectives
+          // Default: select all perspectives (only on first open)
           if (selectedPerspectives.length === 0) {
             selectedPerspectives = data.perspectives.map(p => p.id);
           }
+          perspectiveModalOpened = true; // Mark that user has explicitly opened the modal
           renderPerspectiveModal(data.perspectives, category);
           document.getElementById('perspectiveModal').classList.remove('hidden');
         }
@@ -1623,8 +1682,8 @@
       spinner.classList.remove('hidden');
       text.textContent = 'Forbereder...';
 
-      // If no perspectives selected, auto-fetch and select all
-      if (selectedPerspectives.length === 0) {
+      // If no perspectives selected and user hasn't opened the modal, auto-fetch and select all
+      if (selectedPerspectives.length === 0 && !perspectiveModalOpened) {
         showStatus('Henter tilgjengelige perspektiver...', 'info', true);
         try {
           const perspRes = await fetch(`/api/perspectives/${currentSession.category}`);
@@ -1780,6 +1839,12 @@
         if (data.images && data.images.length > 0) {
           document.getElementById('gallerySection').classList.remove('hidden');
           document.getElementById('saveSection').classList.remove('hidden');
+
+          // Check Drive existence when save section is shown
+          const productId = document.getElementById('productIdInput')?.value;
+          if (productId) {
+            checkDriveExistence(productId);
+          }
         }
       } catch (error) {
         console.error('Fetch generated images error:', error);
@@ -1881,6 +1946,35 @@
     function closeModal(event) {
       if (!event || event.target.classList.contains('modal-overlay') || event.target.classList.contains('modal-close')) {
         document.getElementById('imageModal').classList.add('hidden');
+      }
+    }
+
+    // Check if product exists in Google Drive
+    async function checkDriveExistence(productId) {
+      if (!productId) {
+        return;
+      }
+
+      const statusDiv = document.getElementById('driveExistenceStatus');
+      const textSpan = document.getElementById('driveExistenceText');
+
+      try {
+        statusDiv.classList.remove('hidden', 'new-product', 'exists-warning');
+        textSpan.textContent = 'Sjekker Google Drive...';
+
+        const res = await fetch(`/api/check-drive-exists/${encodeURIComponent(productId)}`);
+        const data = await res.json();
+
+        if (data.exists) {
+          statusDiv.classList.add('exists-warning');
+          textSpan.textContent = `Produktet ${productId} eksisterer allerede i Google Drive`;
+        } else {
+          statusDiv.classList.add('new-product');
+          textSpan.textContent = `Produktet ${productId} eksisterer ikke i Google Drive ennå ✓`;
+        }
+      } catch (error) {
+        console.error('Drive existence check error:', error);
+        statusDiv.classList.add('hidden');
       }
     }
 

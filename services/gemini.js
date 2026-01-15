@@ -280,7 +280,9 @@ You are an expert Jewelry Creative Director and Photographic Prompt Engineer. Yo
 
 # MANDATORY PHOTOGRAPHY STANDARDS
 Your output MUST include these technical directives to ensure 2K optical realism:
-- OPTICS: Specify a "100mm Macro Lens" for extreme detail and a "Phase One XF" camera aesthetic.
+- CAMERA: Command a "Hasselblad X2D II 100C" or "Phase One XF" medium format aesthetic. These sensors provide the 16-bit color depth and 15-stop dynamic range required for high-end metallic luster.
+- LENS: Specify a "120mm f/4 Macro lens" with a "1:1 magnification ratio." This focal length avoids distortion and resolves the micro-grain of polished gold and the sharp facets of gemstones.
+- PHYSICS: Command "zero digital noise" and "optical focus stacking" to ensure the entire piece is tack-sharp from the foreground to the background.
 - LIGHTING: Define light physics using "5500K softbox diffusion" and specify "sharp specular highlights" on the metal edges.
 - GROUNDING: Explicitly command "soft-edged contact shadows" to provide a realistic sense of weight and 3D volume.
 
@@ -308,7 +310,7 @@ Create a MASTER RENDERING PROMPT that Nano Banana Pro (gemini-2.0-flash-exp with
 The prompt MUST:
 1. Describe the jewelry piece EXACTLY as shown in the PRODUCT IMAGES (copy every visual detail from those specific images)
 2. Apply the composition and styling from the REFERENCE COMPOSITION PROMPT (camera angle, framing, positioning, lighting, background, mood)
-3. Include the MANDATORY PHOTOGRAPHY STANDARDS (100mm Macro Lens, Phase One XF, 5500K softbox, sharp specular highlights, soft-edged contact shadows)
+3. Include the MANDATORY PHOTOGRAPHY STANDARDS (Hasselblad X2D II 100C or Phase One XF, 120mm f/4 Macro lens 1:1, zero digital noise, optical focus stacking, 5500K softbox, sharp specular highlights, soft-edged contact shadows)
 4. Specify: 2K resolution (2048x2048), photorealistic quality, no CGI look, no text/logos/watermarks
 5. NEVER add jewelry elements that are not visible in the product images
 
@@ -317,7 +319,7 @@ The prompt MUST:
 Return ONLY the master prompt text. Start directly with the image description. No labels, no JSON, no explanations, no preamble.
 
 Example format:
-"Ultra high-definition 2K luxury editorial photograph of [detailed jewelry description matching the product images exactly]. [Exact composition and styling from reference]. Shot with 100mm Macro Lens on Phase One XF camera. [Exact lighting setup with 5500K softbox diffusion]. Sharp specular highlights on metal edges. Soft-edged contact shadows grounding the piece. [Background and mood]. Photorealistic quality, no CGI artifacts, no text or watermarks."`;
+"Ultra high-definition 2K luxury editorial photograph of [detailed jewelry description matching the product images exactly]. [Exact composition and styling from reference]. Shot with 120mm f/4 Macro lens at 1:1 magnification ratio on Hasselblad X2D II 100C medium format camera. Optical focus stacking ensures tack-sharp detail from foreground to background. Zero digital noise. [Exact lighting setup with 5500K softbox diffusion]. Sharp specular highlights on metal edges. Soft-edged contact shadows grounding the piece. [Background and mood]. Photorealistic quality, no CGI artifacts, no text or watermarks."`;
 
   // Add the text prompt
   contentParts.push({ text: prompt });
@@ -345,7 +347,7 @@ Example format:
       return fallbackResponse.text.trim();
     } catch (fallbackError) {
       // Ultimate fallback: combine the inputs manually
-      return `Ultra high-definition 2K luxury jewelry editorial photograph. ${visualDescriptor} ${compositionPrompt} Shot with 100mm Macro Lens on Phase One XF camera. 5500K softbox diffusion. Sharp specular highlights on metal edges. Soft-edged contact shadows. Professional studio lighting, photorealistic quality.`;
+      return `Ultra high-definition 2K luxury jewelry editorial photograph. ${visualDescriptor} ${compositionPrompt} Shot with 120mm f/4 Macro lens at 1:1 magnification on Hasselblad X2D II 100C medium format camera. Optical focus stacking. Zero digital noise. 5500K softbox diffusion. Sharp specular highlights on metal edges. Soft-edged contact shadows. Professional studio lighting, photorealistic quality.`;
     }
   }
 }

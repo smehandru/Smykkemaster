@@ -495,6 +495,23 @@ app.post('/api/regenerate/:sessionId/:perspectiveId', requireAuth, async (req, r
 // SAVE & FINALIZE ROUTES
 // =============================================================================
 
+// Check if product exists in Google Drive
+app.get('/api/check-drive-exists/:productId', requireAuth, async (req, res) => {
+  const { productId } = req.params;
+
+  if (!productId) {
+    return res.status(400).json({ error: 'Product ID is required' });
+  }
+
+  try {
+    const result = await googleDrive.checkProductExists(productId);
+    res.json(result);
+  } catch (error) {
+    console.error('Error checking Drive existence:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.post('/api/save/:sessionId', requireAuth, async (req, res) => {
   const session = activeSessions.get(req.params.sessionId);
   if (!session) {

@@ -198,6 +198,49 @@ async function downloadFile(fileId) {
   return Buffer.from(response.data);
 }
 
+// Check if product folder already exists in Drive
+async function checkProductExists(productId) {
+  try {
+    const drive = await getDriveClient();
+
+    // Ensure folders are initialized
+    if (!RAW_FOLDER_ID || !FINAL_FOLDER_ID) {
+      await initializeFolders();
+    }
+
+    // Check if folder exists in raw
+    const rawResult = await drive.files.list({
+      q: `name='${productId}' and '${RAW_FOLDER_ID}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+      fields: 'files(id, name)'
+    });
+
+    // Check if folder exists in final
+    const finalResult = await drive.files.list({
+      q: `name='${productId}' and '${FINAL_FOLDER_ID}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+      fields: 'files(id, name)'
+    });
+
+    const existsInRaw = rawResult.data.files.length > 0;
+    const existsInFinal = finalResult.data.files.length > 0;
+
+    return {
+      exists: existsInRaw || existsInFinal,
+      existsInRaw,
+      existsInFinal,
+      productId
+    };
+  } catch (error) {
+    console.error('Error checking product existence:', error);
+    return {
+      exists: false,
+      existsInRaw: false,
+      existsInFinal: false,
+      productId,
+      error: error.message
+    };
+  }
+}
+
 module.exports = {
   initializeFolders,
   createProductFolder,
@@ -207,6 +250,7 @@ module.exports = {
   getFolderLink,
   deleteFile,
   downloadFile,
+  checkProductExists,
   getAuthClient,
   getDriveClient
 };
