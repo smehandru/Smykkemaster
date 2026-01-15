@@ -308,27 +308,40 @@ async function generateImages(session) {
 
     // Load composition perspectives for this category
     const { getPerspectivesForCategory } = require('./config/compositionPrompts');
-    const perspectives = getPerspectivesForCategory(session.category);
+    const allPerspectives = getPerspectivesForCategory(session.category);
 
-    if (!perspectives || perspectives.length === 0) {
+    if (!allPerspectives || allPerspectives.length === 0) {
       throw new Error(`No composition perspectives found for category: ${session.category}`);
+    }
+
+    // Filter to only selected perspectives if specified
+    let perspectives = allPerspectives;
+    if (session.selectedPerspectives && session.selectedPerspectives.length > 0) {
+      perspectives = allPerspectives.filter(p => session.selectedPerspectives.includes(p.id));
+      console.log(`Filtered to ${perspectives.length} selected perspectives (out of ${allPerspectives.length} total)`);
+    } else {
+      console.log(`No perspectives selected - generating all ${perspectives.length} perspectives`);
+    }
+
+    if (perspectives.length === 0) {
+      throw new Error('No perspectives to generate (selection is empty)');
     }
 
     const visualDescriptor = session.visualDescriptor || 'A beautiful 22 karat gold jewelry piece';
 
-    // Load composition reference images for each perspective
+    // Load composition reference images for each perspective (NOTE: images are NOT sent to model, only prompts)
     const compositionImageBuffers = {};
     for (const p of perspectives) {
       const imgBuffer = await loadCompositionImage(session.category, p.imageFile);
       if (imgBuffer) {
         compositionImageBuffers[p.id] = imgBuffer;
-        console.log(`Loaded composition image for ${p.id}: ${p.imageFile}`);
+        console.log(`Loaded composition image for ${p.id}: ${p.imageFile} (for reference only, NOT sent to model)`);
       }
     }
 
     console.log(`Using SIMPLIFIED direct workflow`);
     console.log(`Visual descriptor: ${visualDescriptor.substring(0, 80)}...`);
-    console.log(`Loaded ${Object.keys(compositionImageBuffers).length} composition reference images`);
+    console.log(`Composition guidance: via TEXT PROMPTS only (no images sent)`);
 
     // Generate directly - no Gemini master prompt step
     const results = await imageGenerator.generateDirectFromComposition(
@@ -781,19 +794,18 @@ app.get('/api/nano-banana-input/:sessionId', requireAuth, async (req, res) => {
   const perspectiveInputs = [];
 
   for (const p of perspectives) {
-    // Build the exact prompt that would be sent to Nano Banana Pro
-    const combinedPrompt = imageGenerator.buildCombinedPrompt(
+    // Build the EXACT prompt that gets sent to Nano Banana Pro (with wrapper)
+    const exactPrompt = imageGenerator.buildExactPromptSentToNanoBananaPro(
       visualDescriptor,
       p.prompt,
-      productImageCount,
-      false  // Composition image is NOT sent
+      productImageCount
     );
 
     perspectiveInputs.push({
       perspectiveId: p.id,
       perspectiveName: p.name || p.id,
       compositionPrompt: p.prompt,
-      fullPromptToNanoBananaPro: combinedPrompt,
+      fullPromptToNanoBananaPro: exactPrompt,
       images: {
         productImages: {
           count: productImageCount,

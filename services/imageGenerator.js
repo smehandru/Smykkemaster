@@ -439,6 +439,19 @@ Follow the composition and styling instructions above for:
 - Jewelry must match product images exactly`;
 }
 
+// Build the EXACT final prompt that gets sent to Nano Banana Pro
+// This includes the wrapper added by generateSingleImageWithComposition()
+function buildExactPromptSentToNanoBananaPro(visualDescriptor, compositionPrompt, numProductImages) {
+  const combinedPrompt = buildCombinedPrompt(visualDescriptor, compositionPrompt, numProductImages, false);
+
+  // Add the wrapper that generateSingleImageWithComposition() adds at line 300
+  if (numProductImages > 0) {
+    return `Using images 1-${numProductImages} in this message as exact reference for the jewelry design (showing the piece from ${numProductImages > 1 ? 'multiple angles' : 'one angle'}), ${combinedPrompt}`;
+  } else {
+    return combinedPrompt;
+  }
+}
+
 // Generate images using composition prompts and master prompts (new system)
 async function generateFromMasterPrompts(masterPrompts, referenceImageBuffers, compositionImageBuffers = {}) {
   const results = [];
@@ -531,6 +544,7 @@ module.exports = {
   generateFromMasterPrompts,
   generateDirectFromComposition,
   buildCombinedPrompt,
+  buildExactPromptSentToNanoBananaPro,
   regenerateImage,
   regenerateSingleImage,
   getPerspectives,
