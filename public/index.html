@@ -881,11 +881,11 @@
     </div>
   </div>
 
-  <!-- Advanced Modal (Nano Banana Pro Input Details) -->
+  <!-- Advanced Modal (2-Step Workflow Details) -->
   <div id="advancedModal" class="prompt-modal hidden">
     <div class="prompt-modal-content">
       <div class="prompt-modal-header">
-        <h3>Nano Banana Pro - Complete Input Details</h3>
+        <h3>🔄 2-Step Workflow: Gemini 3 Pro → Nano Banana Pro</h3>
         <button class="prompt-modal-close" onclick="closeAdvancedModal()">&times;</button>
       </div>
       <div class="prompt-modal-body" id="advancedModalBody">
@@ -1489,8 +1489,8 @@
       body.innerHTML = `
         <div style="text-align: center; padding: 3rem;">
           <div class="skeleton-shimmer" style="width: 60px; height: 60px; border-radius: 50%; margin: 0 auto 1rem;"></div>
-          <p style="color: var(--gold);">Henter Nano Banana Pro input detaljer...</p>
-          <p style="color: var(--text-muted); font-size: 0.9rem;">Viser komplett input som sendes til modellen</p>
+          <p style="color: var(--gold);">Henter workflow detaljer...</p>
+          <p style="color: var(--text-muted); font-size: 0.9rem;">Viser 2-stegs prosess: Gemini 3 Pro → Nano Banana Pro</p>
         </div>
       `;
       document.getElementById('advancedModal').classList.remove('hidden');
@@ -1505,7 +1505,7 @@
           body.innerHTML = '<p style="color: var(--text-muted);">Ingen data tilgjengelig ennå.</p>';
         }
       } catch (error) {
-        console.error('Failed to fetch Nano Banana Pro input:', error);
+        console.error('Failed to fetch workflow details:', error);
         body.innerHTML = '<p style="color: #ff6b6b;">Feil ved henting av data. Prøv igjen.</p>';
         showStatus('Kunne ikke hente data', 'error', false);
       }
@@ -1516,9 +1516,9 @@
 
       const headerHtml = `
         <div style="background: var(--bg-dark); padding: 1.5rem; border-radius: 4px; margin-bottom: 1.5rem; border-left: 3px solid var(--gold);">
-          <h4 style="color: var(--gold); margin-bottom: 1rem;">🤖 Nano Banana Pro Input Overview</h4>
+          <h4 style="color: var(--gold); margin-bottom: 1rem;">🔄 TWO-STEP Workflow Overview</h4>
           <div style="display: grid; gap: 0.5rem; color: var(--text-muted); font-size: 0.9rem;">
-            <div><strong style="color: var(--gold);">Model:</strong> ${data.model}</div>
+            <div><strong style="color: var(--gold);">Workflow:</strong> ${data.workflow}</div>
             <div><strong style="color: var(--gold);">Session ID:</strong> ${data.sessionId}</div>
             <div><strong style="color: var(--gold);">Category:</strong> ${data.category}</div>
             <div><strong style="color: var(--gold);">Product Images:</strong> ${data.productImageCount} images</div>
@@ -1539,6 +1539,11 @@
             <li><strong>No CGI:</strong> ${data.technicalRequirements.noCGI ? 'Yes' : 'No'}</li>
             <li><strong>No Watermarks:</strong> ${data.technicalRequirements.noWatermarks ? 'Yes' : 'No'}</li>
             <li><strong>Photorealistic:</strong> ${data.technicalRequirements.photorealistic ? 'Yes' : 'No'}</li>
+            <li><strong>Photography Standards:</strong>
+              <ul style="margin-top: 0.5rem;">
+                ${data.technicalRequirements.photographyStandards.map(s => `<li>${s}</li>`).join('')}
+              </ul>
+            </li>
             <li><strong>Safety Settings:</strong>
               <ul style="margin-top: 0.5rem;">
                 ${data.technicalRequirements.safetySettings.map(s => `<li>${s}</li>`).join('')}
@@ -1547,7 +1552,7 @@
           </ul>
         </div>
 
-        <h4 style="color: var(--gold); margin-bottom: 1rem; border-bottom: 1px solid var(--gold-dark); padding-bottom: 0.5rem;">📸 Per-Perspective Input Details</h4>
+        <h4 style="color: var(--gold); margin-bottom: 1rem; border-bottom: 1px solid var(--gold-dark); padding-bottom: 0.5rem;">🔄 Per-Perspective 2-Step Workflow</h4>
       `;
 
       const perspectivesHtml = data.perspectives.map((p, index) => `
@@ -1557,28 +1562,41 @@
           </summary>
           <div style="margin-top: 1rem; padding-left: 0.5rem;">
 
-            <div style="margin-bottom: 1rem;">
-              <strong style="color: var(--gold); display: block; margin-bottom: 0.5rem;">🖼️ Images Sent:</strong>
-              <div style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.6;">
-                <div style="margin-bottom: 0.5rem;">
-                  <strong style="color: var(--text-light);">Product Images (${p.images.productImages.count}):</strong><br>
-                  ${p.images.productImages.description}
+            <!-- STEP 1: Gemini 3 Pro -->
+            <div style="background: rgba(139, 115, 85, 0.1); padding: 1rem; border-radius: 4px; margin-bottom: 1.5rem; border: 2px solid var(--gold-dark);">
+              <h5 style="color: var(--gold); margin-bottom: 0.75rem;">🧠 STEP 1: ${p.step1_gemini3Pro.model}</h5>
+
+              <div style="margin-bottom: 0.75rem;">
+                <strong style="color: var(--gold); display: block; margin-bottom: 0.5rem;">📥 Input:</strong>
+                <div style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.6; margin-left: 1rem;">
+                  <div><strong>Product Images:</strong> ${p.step1_gemini3Pro.input.productImages.count} (${p.step1_gemini3Pro.input.productImages.description})</div>
+                  <div style="margin-top: 0.5rem;"><strong>Global Visual Descriptor:</strong><br><span style="color: var(--text-light); font-size: 0.8rem;">${p.step1_gemini3Pro.input.globalVisualDescriptor.substring(0, 100)}...</span></div>
+                  <div style="margin-top: 0.5rem;"><strong>Composition Prompt:</strong><br><span style="color: var(--text-light); font-size: 0.8rem;">${p.step1_gemini3Pro.input.compositionPrompt.substring(0, 100)}...</span></div>
                 </div>
-                <div style="background: rgba(212, 175, 55, 0.1); padding: 0.5rem; border-radius: 4px; border-left: 2px solid var(--gold);">
-                  <strong style="color: var(--gold);">⚠️ Composition Reference:</strong><br>
-                  <span style="color: var(--text-light);">${p.images.compositionReferenceImage.note}</span>
-                </div>
+              </div>
+
+              <div>
+                <strong style="color: var(--gold); display: block; margin-bottom: 0.5rem;">📤 Output (Master Rendering Prompt):</strong>
+                <pre style="background: rgba(0,0,0,0.4); padding: 0.75rem; border-radius: 4px; color: var(--text-light); font-size: 0.8rem; white-space: pre-wrap; line-height: 1.5; overflow-x: auto; max-height: 300px; overflow-y: auto;">${p.step1_gemini3Pro.output.masterRenderingPrompt}</pre>
               </div>
             </div>
 
-            <div style="margin-bottom: 1rem;">
-              <strong style="color: var(--gold); display: block; margin-bottom: 0.5rem;">📋 Composition Prompt:</strong>
-              <pre style="background: rgba(0,0,0,0.3); padding: 0.75rem; border-radius: 4px; color: var(--text-light); font-size: 0.8rem; white-space: pre-wrap; line-height: 1.5; overflow-x: auto;">${p.compositionPrompt}</pre>
-            </div>
+            <!-- STEP 2: Nano Banana Pro -->
+            <div style="background: rgba(76, 175, 80, 0.1); padding: 1rem; border-radius: 4px; border: 2px solid #4CAF50;">
+              <h5 style="color: #4CAF50; margin-bottom: 0.75rem;">🎨 STEP 2: ${p.step2_nanoBananaPro.model}</h5>
 
-            <div>
-              <strong style="color: var(--gold); display: block; margin-bottom: 0.5rem;">✨ Full Prompt to Nano Banana Pro:</strong>
-              <pre style="background: rgba(0,0,0,0.3); padding: 0.75rem; border-radius: 4px; color: var(--text-light); font-size: 0.8rem; white-space: pre-wrap; line-height: 1.5; overflow-x: auto; max-height: 400px; overflow-y: auto;">${p.fullPromptToNanoBananaPro}</pre>
+              <div style="margin-bottom: 0.75rem;">
+                <strong style="color: #4CAF50; display: block; margin-bottom: 0.5rem;">📥 Input:</strong>
+                <div style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.6; margin-left: 1rem;">
+                  <div><strong>Product Images:</strong> ${p.step2_nanoBananaPro.input.productImages.count} (${p.step2_nanoBananaPro.input.productImages.description})</div>
+                  <div style="margin-top: 0.5rem;"><strong>Master Rendering Prompt:</strong><br><span style="color: var(--text-light); font-size: 0.8rem;">${p.step2_nanoBananaPro.input.masterRenderingPrompt.substring(0, 150)}...</span></div>
+                </div>
+              </div>
+
+              <div>
+                <strong style="color: #4CAF50; display: block; margin-bottom: 0.5rem;">📤 Output:</strong>
+                <div style="color: var(--text-muted); font-size: 0.85rem; margin-left: 1rem;">${p.step2_nanoBananaPro.output}</div>
+              </div>
             </div>
 
           </div>

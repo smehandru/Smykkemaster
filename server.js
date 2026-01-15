@@ -299,12 +299,13 @@ app.post('/api/generate/:sessionId', requireAuth, async (req, res) => {
   });
 });
 
-// Background generation function - SIMPLIFIED: sends directly to Nano Banana Pro
-// No intermediate Gemini master prompt step - combines visual descriptor + composition prompt directly
+// Background generation function - TWO-STEP WORKFLOW:
+// Step 1: Gemini 3 Pro creates master rendering prompts
+// Step 2: Nano Banana Pro generates images using master prompts
 async function generateImages(session) {
   try {
     const referenceBuffers = session.rawImages.map(img => img.buffer);
-    console.log(`Starting DIRECT image generation for session ${session.id}`);
+    console.log(`Starting TWO-STEP image generation for session ${session.id}`);
 
     // Load composition perspectives for this category
     const { getPerspectivesForCategory } = require('./config/compositionPrompts');
@@ -329,26 +330,43 @@ async function generateImages(session) {
 
     const visualDescriptor = session.visualDescriptor || 'A beautiful 22 karat gold jewelry piece';
 
-    // Load composition reference images for each perspective (NOTE: images are NOT sent to model, only prompts)
-    const compositionImageBuffers = {};
-    for (const p of perspectives) {
-      const imgBuffer = await loadCompositionImage(session.category, p.imageFile);
-      if (imgBuffer) {
-        compositionImageBuffers[p.id] = imgBuffer;
-        console.log(`Loaded composition image for ${p.id}: ${p.imageFile} (for reference only, NOT sent to model)`);
-      }
-    }
-
-    console.log(`Using SIMPLIFIED direct workflow`);
+    console.log(`\n=== STEP 1: Generating master prompts with Gemini 3 Pro ===`);
     console.log(`Visual descriptor: ${visualDescriptor.substring(0, 80)}...`);
-    console.log(`Composition guidance: via TEXT PROMPTS only (no images sent)`);
+    console.log(`Creating ${perspectives.length} master prompts...`);
 
-    // Generate directly - no Gemini master prompt step
-    const results = await imageGenerator.generateDirectFromComposition(
-      perspectives,
-      visualDescriptor,
+    // STEP 1: Generate master prompts using Gemini 3 Pro (parallel processing)
+    const promptPromises = perspectives.map(async (p) => {
+      console.log(`  Generating master prompt for ${p.id}...`);
+      const masterPrompt = await gemini.generateMasterPrompt(
+        visualDescriptor,
+        p.prompt,
+        session.category,
+        referenceBuffers,
+        null  // Composition image is NOT sent - only text prompt
+      );
+      console.log(`  ✓ Master prompt for ${p.id} complete`);
+      return { id: p.id, prompt: masterPrompt, name: p.name };
+    });
+
+    const masterPromptResults = await Promise.all(promptPromises);
+
+    // Build master prompts object
+    const masterPrompts = {};
+    masterPromptResults.forEach(r => {
+      masterPrompts[r.id] = r.prompt;
+    });
+
+    // Cache master prompts in session for Advanced modal
+    session.masterPrompts = masterPrompts;
+
+    console.log(`\n=== STEP 2: Generating images with Nano Banana Pro ===`);
+    console.log(`Using ${Object.keys(masterPrompts).length} master prompts`);
+
+    // STEP 2: Generate images using master prompts with Nano Banana Pro
+    const results = await imageGenerator.generateFromMasterPrompts(
+      masterPrompts,
       referenceBuffers,
-      compositionImageBuffers
+      {}  // No composition image buffers needed
     );
 
     // Store results (temporarily in memory, not yet uploaded to Drive)
@@ -392,7 +410,7 @@ app.get('/api/generated/:sessionId', requireAuth, (req, res) => {
   });
 });
 
-// Regenerate specific image - SIMPLIFIED: direct to Nano Banana Pro
+// Regenerate specific image - TWO-STEP: Gemini 3 Pro → Nano Banana Pro
 app.post('/api/regenerate/:sessionId/:perspectiveId', requireAuth, async (req, res) => {
   const session = activeSessions.get(req.params.sessionId);
   if (!session) {
@@ -415,26 +433,29 @@ app.post('/api/regenerate/:sessionId/:perspectiveId', requireAuth, async (req, r
       throw new Error(`Unknown perspective: ${perspectiveId}`);
     }
 
-    // Load composition image
-    const compositionImageBuffer = await loadCompositionImage(session.category, perspective.imageFile);
-    const hasComposition = !!compositionImageBuffer;
-
-    // Build combined prompt directly (no Gemini step)
     const visualDescriptor = session.visualDescriptor || 'A beautiful 22 karat gold jewelry piece';
-    const combinedPrompt = customPrompt || imageGenerator.buildCombinedPrompt(
-      visualDescriptor,
-      perspective.prompt,
-      referenceBuffers.length,
-      hasComposition
-    );
 
-    console.log(`Regenerating ${perspectiveId} with SIMPLIFIED direct workflow`);
+    // STEP 1: Generate master prompt with Gemini 3 Pro (unless custom prompt provided)
+    let masterPrompt;
+    if (customPrompt) {
+      masterPrompt = customPrompt;
+      console.log(`Regenerating ${perspectiveId} with custom prompt`);
+    } else {
+      console.log(`Regenerating ${perspectiveId} - generating master prompt with Gemini 3 Pro`);
+      masterPrompt = await gemini.generateMasterPrompt(
+        visualDescriptor,
+        perspective.prompt,
+        session.category,
+        referenceBuffers,
+        null  // Composition image is NOT sent - only text prompt
+      );
+    }
 
-    // Use composition-aware generation directly
+    // STEP 2: Generate image with Nano Banana Pro using master prompt
     const result = await imageGenerator.regenerateSingleImage(
-      combinedPrompt,
+      masterPrompt,
       referenceBuffers,
-      compositionImageBuffer
+      null  // No composition image
     );
 
     // Update the specific image in session
@@ -769,7 +790,7 @@ TECHNICAL REQUIREMENTS:
 - Clean, minimalist aesthetic suitable for high-end e-commerce`;
 }
 
-// Get complete Nano Banana Pro input details for transparency
+// Get complete 2-step workflow details for transparency
 app.get('/api/nano-banana-input/:sessionId', requireAuth, async (req, res) => {
   const session = activeSessions.get(req.params.sessionId);
   if (!session) {
@@ -790,39 +811,50 @@ app.get('/api/nano-banana-input/:sessionId', requireAuth, async (req, res) => {
   const visualDescriptor = session.visualDescriptor || '[Visual descriptor not yet generated]';
   const productImageCount = session.rawImages ? session.rawImages.length : 0;
 
+  // Check if master prompts have been generated
+  const hasMasterPrompts = session.masterPrompts && Object.keys(session.masterPrompts).length > 0;
+
   // Build detailed input for each perspective
   const perspectiveInputs = [];
 
   for (const p of perspectives) {
-    // Build the EXACT prompt that gets sent to Nano Banana Pro (with wrapper)
-    const exactPrompt = imageGenerator.buildExactPromptSentToNanoBananaPro(
-      visualDescriptor,
-      p.prompt,
-      productImageCount
-    );
+    const masterPrompt = hasMasterPrompts ? session.masterPrompts[p.id] : '[Master prompt not yet generated - will be created by Gemini 3 Pro during generation]';
 
     perspectiveInputs.push({
       perspectiveId: p.id,
       perspectiveName: p.name || p.id,
-      compositionPrompt: p.prompt,
-      fullPromptToNanoBananaPro: exactPrompt,
-      images: {
-        productImages: {
-          count: productImageCount,
-          description: session.rawImages ? session.rawImages.map((img, i) => `Image ${i + 1}: ${img.originalName}`).join(', ') : 'No images'
+      step1_gemini3Pro: {
+        model: 'gemini-3-pro-preview (thinking model)',
+        input: {
+          productImages: {
+            count: productImageCount,
+            description: session.rawImages ? session.rawImages.map((img, i) => `Image ${i + 1}: ${img.originalName}`).join(', ') : 'No images'
+          },
+          globalVisualDescriptor: visualDescriptor,
+          compositionPrompt: p.prompt
         },
-        compositionReferenceImage: {
-          sent: false,
-          note: 'Composition guidance is provided via TEXT PROMPT ONLY (no image sent to model)'
+        output: {
+          masterRenderingPrompt: masterPrompt
         }
+      },
+      step2_nanoBananaPro: {
+        model: 'gemini-2.0-flash-exp (image generation)',
+        input: {
+          productImages: {
+            count: productImageCount,
+            description: session.rawImages ? session.rawImages.map((img, i) => `Image ${i + 1}: ${img.originalName}`).join(', ') : 'No images'
+          },
+          masterRenderingPrompt: masterPrompt
+        },
+        output: '2K jewelry editorial photograph'
       }
     });
   }
 
   res.json({
+    workflow: 'TWO-STEP',
     sessionId: session.id,
     category: session.category,
-    model: 'gemini-2.0-flash-exp (Nano Banana Pro)',
     globalVisualDescriptor: visualDescriptor,
     productImageCount,
     perspectiveCount: perspectives.length,
@@ -832,6 +864,12 @@ app.get('/api/nano-banana-input/:sessionId', requireAuth, async (req, res) => {
       noCGI: true,
       noWatermarks: true,
       photorealistic: true,
+      photographyStandards: [
+        '100mm Macro Lens on Phase One XF camera',
+        '5500K softbox diffusion',
+        'Sharp specular highlights on metal edges',
+        'Soft-edged contact shadows'
+      ],
       safetySettings: [
         'HARM_CATEGORY_DANGEROUS_CONTENT: BLOCK_ONLY_HIGH',
         'HARM_CATEGORY_HARASSMENT: BLOCK_ONLY_HIGH',

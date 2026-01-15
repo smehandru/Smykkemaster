@@ -238,7 +238,7 @@ Vær KONSIS - ikke skriv lange beskrivelser. Maksimalt 2 korte setninger.`;
 }
 
 // Generate refined master prompt using Gemini 3 Pro with HIGH thinking
-// Now accepts product images and composition reference image
+// Receives product images + composition prompt (text only) + visual descriptor
 async function generateMasterPrompt(visualDescriptor, compositionPrompt, category, productImageBuffers = [], compositionImageBuffer = null) {
   const ai = initializeGenAI();
 
@@ -265,69 +265,59 @@ async function generateMasterPrompt(visualDescriptor, compositionPrompt, categor
     }
   }
 
-  // Add composition reference image
-  if (compositionImageBuffer) {
-    contentParts.push({
-      inlineData: {
-        mimeType: 'image/png',
-        data: compositionImageBuffer.toString('base64')
-      }
-    });
-  }
+  // NOTE: Composition reference image is NOT sent - only text prompt
 
-  // Build the modular prompt that references the images
+  // Build the prompt that references the images
   const numProductImages = productImageBuffers ? productImageBuffers.length : 0;
-  const hasCompositionImage = !!compositionImageBuffer;
 
-  const prompt = `You are an expert luxury jewelry photographer and art director creating a master rendering prompt.
+  const prompt = `# ROLE
+You are an expert Jewelry Creative Director and Photographic Prompt Engineer. Your task is to merge the "Identity" of user-uploaded jewelry with a text-based "Reference Composition Prompt" to create a high-fidelity 2K Master Rendering Prompt.
 
-=== INPUT REFERENCES ===
+# INSTRUCTION: LINGUISTIC MAPPING
+1. ANALYZE IDENTITY: Extract metal types, stone counts, and unique engravings from [PRODUCT_IMAGE_1] through [PRODUCT_IMAGE_${numProductImages}]. Maintain 100% fidelity to these physical traits.
+2. PARSE COMPOSITION: Read the [REFERENCE_COMPOSITION_PROMPT] below. Extract the placement (e.g., "flat-lay," "diagonal"), the lighting mood (e.g., "warm studio," "high-key"), and the styling.
+3. SYNTHESIZE: Combine these into a single narrative paragraph for Nano Banana Pro.
 
-[PRODUCT IMAGES: Images 1-${numProductImages} in this message]
+# MANDATORY PHOTOGRAPHY STANDARDS
+Your output MUST include these technical directives to ensure 2K optical realism:
+- OPTICS: Specify a "100mm Macro Lens" for extreme detail and a "Phase One XF" camera aesthetic.
+- LIGHTING: Define light physics using "5500K softbox diffusion" and specify "sharp specular highlights" on the metal edges.
+- GROUNDING: Explicitly command "soft-edged contact shadows" to provide a realistic sense of weight and 3D volume.
+
+# CONSTRAINTS
+- No CGI: Do not use terms like "3D render," "unreal engine," or "octane." Focus on raw photography terms.
+- No HALLUCINATIONS: Do not add any gems or features found in the composition prompt if they are not in the raw product images.
+
+=== INPUT DATA ===
+
+[PRODUCT_IMAGES]: Images 1-${numProductImages} in this message
 These are the raw product photos of the actual jewelry piece. Study every detail: shape, texture, finish, patterns, stones, metalwork.
 
-[PRODUCT VISUAL DESCRIPTOR]
+[PRODUCT_VISUAL_DESCRIPTOR]:
 ${visualDescriptor}
 
-${hasCompositionImage ? `[COMPOSITION REFERENCE IMAGE: Image ${numProductImages + 1} - the LAST image in this message]
-⚠️ CRITICAL: This image is ONLY for reference of:
-- Camera angle and framing
-- Lighting setup and direction
-- Background and environment styling
-- Overall mood and atmosphere
-⚠️ DO NOT use ANY jewelry design elements from this image! The jewelry shown in the composition reference is a DIFFERENT piece - IGNORE its design completely.` : ''}
-
-[COMPOSITION & STYLING INSTRUCTIONS]
+[REFERENCE_COMPOSITION_PROMPT]:
 ${compositionPrompt}
 
-[CATEGORY: ${categoryNames[category] || 'jewelry'}]
-
-=== CRITICAL RULES ===
-
-⚠️ THE JEWELRY DESIGN MUST COME 100% FROM THE PRODUCT IMAGES ONLY ⚠️
-- Copy EVERY detail of the jewelry ONLY from the product images: exact shape, color, stones, metal finish, patterns, textures
-- COMPLETELY IGNORE any jewelry shown in the composition reference image - it is a DIFFERENT piece used only for styling reference
-- The composition reference provides ONLY: camera angle, lighting, background, mood - NOTHING about the jewelry itself
-- NEVER blend, mix, or combine jewelry designs from different image sources
+[CATEGORY]: ${categoryNames[category] || 'jewelry'}
 
 === YOUR TASK ===
 
-Create a MASTER RENDERING PROMPT that an AI image generator will use to create the final editorial photograph.
+Create a MASTER RENDERING PROMPT that Nano Banana Pro (gemini-2.0-flash-exp with image generation) will use to create the final editorial photograph.
 
 The prompt MUST:
-1. Describe the jewelry piece EXACTLY as shown in the PRODUCT IMAGES ONLY (copy every visual detail from those specific images)
-2. Apply the composition FROM THE REFERENCE (camera angle, framing, positioning) - but COMPLETELY IGNORE the jewelry shown in it
-3. Replicate the lighting setup from the reference (direction, softness, highlights)
-4. Match the background and styling atmosphere from the reference
-5. Specify: 2K resolution, photorealistic, no CGI look, no text/logos/watermarks
-6. NEVER describe or include any jewelry elements from the composition reference image - only from product images
+1. Describe the jewelry piece EXACTLY as shown in the PRODUCT IMAGES (copy every visual detail from those specific images)
+2. Apply the composition and styling from the REFERENCE COMPOSITION PROMPT (camera angle, framing, positioning, lighting, background, mood)
+3. Include the MANDATORY PHOTOGRAPHY STANDARDS (100mm Macro Lens, Phase One XF, 5500K softbox, sharp specular highlights, soft-edged contact shadows)
+4. Specify: 2K resolution (2048x2048), photorealistic quality, no CGI look, no text/logos/watermarks
+5. NEVER add jewelry elements that are not visible in the product images
 
 === OUTPUT FORMAT ===
 
-Return ONLY the master prompt text. Start directly with the image description. No labels, no JSON, no explanations.
+Return ONLY the master prompt text. Start directly with the image description. No labels, no JSON, no explanations, no preamble.
 
 Example format:
-"Ultra high-definition 2K luxury editorial photograph of [detailed jewelry description matching the product images]. [Exact composition from reference]. [Exact lighting setup]. [Background and mood]. Shot with [camera details]. Photorealistic quality, no CGI artifacts."`;
+"Ultra high-definition 2K luxury editorial photograph of [detailed jewelry description matching the product images exactly]. [Exact composition and styling from reference]. Shot with 100mm Macro Lens on Phase One XF camera. [Exact lighting setup with 5500K softbox diffusion]. Sharp specular highlights on metal edges. Soft-edged contact shadows grounding the piece. [Background and mood]. Photorealistic quality, no CGI artifacts, no text or watermarks."`;
 
   // Add the text prompt
   contentParts.push({ text: prompt });
@@ -355,7 +345,7 @@ Example format:
       return fallbackResponse.text.trim();
     } catch (fallbackError) {
       // Ultimate fallback: combine the inputs manually
-      return `Ultra high-definition 2K luxury jewelry editorial photograph. ${visualDescriptor} ${compositionPrompt} Professional studio lighting, shallow depth of field, photorealistic quality.`;
+      return `Ultra high-definition 2K luxury jewelry editorial photograph. ${visualDescriptor} ${compositionPrompt} Shot with 100mm Macro Lens on Phase One XF camera. 5500K softbox diffusion. Sharp specular highlights on metal edges. Soft-edged contact shadows. Professional studio lighting, photorealistic quality.`;
     }
   }
 }
