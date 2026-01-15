@@ -1703,6 +1703,11 @@
       spinner.classList.remove('hidden');
       text.textContent = 'Forbereder...';
 
+      console.log('=== GENERATE IMAGES DEBUG ===');
+      console.log('selectedPerspectives:', selectedPerspectives);
+      console.log('perspectiveModalOpened:', perspectiveModalOpened);
+      console.log('currentSession.selectedPerspectives:', currentSession?.selectedPerspectives);
+
       // If no perspectives selected and user hasn't opened the modal, auto-fetch and select all
       if (selectedPerspectives.length === 0 && !perspectiveModalOpened) {
         showStatus('Henter tilgjengelige perspektiver...', 'info', true);
@@ -1754,6 +1759,10 @@
 
       text.textContent = 'Genererer...';
       showStatus(`Genererer ${selectedPerspectives.length} bilder...`, 'info', true);
+
+      console.log('Sending to backend:');
+      console.log('  filteredPrompts keys:', Object.keys(filteredPrompts));
+      console.log('  selectedPerspectives:', selectedPerspectives);
 
       try {
         const res = await fetch(`/api/generate/${currentSession.id}`, {

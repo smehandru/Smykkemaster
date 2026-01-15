@@ -268,6 +268,10 @@ app.post('/api/generate/:sessionId', requireAuth, async (req, res) => {
   // Store custom prompts and selected perspectives from request
   const { customPrompts, selectedPerspectives } = req.body || {};
 
+  console.log('=== GENERATE REQUEST DEBUG ===');
+  console.log('Received customPrompts keys:', customPrompts ? Object.keys(customPrompts) : 'none');
+  console.log('Received selectedPerspectives:', selectedPerspectives);
+
   // If custom prompts provided, use them as master prompts
   if (customPrompts && Object.keys(customPrompts).length > 0) {
     session.masterPrompts = customPrompts;
@@ -279,6 +283,8 @@ app.post('/api/generate/:sessionId', requireAuth, async (req, res) => {
   session.customPrompts = customPrompts || {};
   session.status = 'generating';
   session.generatedImages = [];
+
+  console.log('Stored in session.selectedPerspectives:', session.selectedPerspectives);
 
   // Get perspectives from composition config or legacy prompts
   const { getPerspectivesForCategory } = require('./config/compositionPrompts');
@@ -317,9 +323,15 @@ async function generateImages(session) {
 
     // Filter to only selected perspectives if specified
     let perspectives = allPerspectives;
+    console.log('=== PERSPECTIVE FILTERING DEBUG ===');
+    console.log('session.selectedPerspectives:', session.selectedPerspectives);
+    console.log('allPerspectives count:', allPerspectives.length);
+    console.log('allPerspectives IDs:', allPerspectives.map(p => p.id));
+
     if (session.selectedPerspectives && session.selectedPerspectives.length > 0) {
       perspectives = allPerspectives.filter(p => session.selectedPerspectives.includes(p.id));
       console.log(`Filtered to ${perspectives.length} selected perspectives (out of ${allPerspectives.length} total)`);
+      console.log('Filtered perspective IDs:', perspectives.map(p => p.id));
     } else {
       console.log(`No perspectives selected - generating all ${perspectives.length} perspectives`);
     }

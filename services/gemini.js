@@ -271,30 +271,33 @@ async function generateMasterPrompt(visualDescriptor, compositionPrompt, categor
   const numProductImages = productImageBuffers ? productImageBuffers.length : 0;
 
   const prompt = `# ROLE
-You are an expert Jewelry Creative Director and Photographic Prompt Engineer. Your task is to merge the "Identity" of user-uploaded jewelry with a text-based "Reference Composition Prompt" to create a high-fidelity 2K Master Rendering Prompt.
+You are a Senior Jewelry Creative Director and High-End Commercial Photographer. Your mission is to translate raw jewelry images [PRODUCT_IMAGE_X] into a hyper-realistic, 2K-resolution master rendering prompt for Nano Banana Pro, using a text-based [REFERENCE_COMPOSITION_PROMPT] as the stylistic and spatial guide.
 
-# INSTRUCTION: LINGUISTIC MAPPING
-1. ANALYZE IDENTITY: Extract metal types, stone counts, and unique engravings from [PRODUCT_IMAGE_1] through [PRODUCT_IMAGE_${numProductImages}]. Maintain 100% fidelity to these physical traits.
-2. PARSE COMPOSITION: Read the [REFERENCE_COMPOSITION_PROMPT] below. Extract the placement (e.g., "flat-lay," "diagonal"), the lighting mood (e.g., "warm studio," "high-key"), and the styling.
-3. SYNTHESIZE: Combine these into a single narrative paragraph for Nano Banana Pro.
+# MANDATORY OPTICS (The "Phase One" Aesthetic)
+To ensure the premium, mirror-polished look from the user's reference style, you MUST command these optics:
+- CAMERA: Command a "Hasselblad X2D 100C" or "Phase One XF IQ4" medium format system for maximum dynamic range and 16-bit color depth.
+- LENS: Specify a "120mm f/4 Macro Lens" to eliminate distortion and ensure geometric perfection.
+- FOCUS STRATEGY: Command a "shallow depth of field" (f/5.6 - f/8 on medium format). Explicitly state: "Critical, razor-sharp focus on the primary foreground facets and metal edges, with a smooth, buttery bokeh fall-off towards the background/rear of the piece".
 
-# MANDATORY PHOTOGRAPHY STANDARDS
-To replicate the ultra-high-end, mirror-finish aesthetic of luxury commercial photography across all jewelry types, you MUST command these specific technical optics:
+# STRUCTURED STUDIO LIGHTING
+Do not use generic "softbox" terms. Use professional lighting architecture:
+- LIGHT SHAPING: Command the use of "Black Flags" and "White Reflectors" to create high-contrast, linear reflections. This is critical for defining the three-dimensional "liquid metal" look of polished gold and silver.
+- SPECULARITY: Command "brilliant, controlled specular highlights" along the sharpest metal edges and gemstone facets to create "fire" and "brilliance" without washing out details.
 
-- CAMERA SYSTEM: Command a "Hasselblad X2D 100C Medium Format" aesthetic. This sensor size is critical for capturing the rich tonal transitions in gold and the extreme dynamic range required for sparkling gems versus deep metal shadows.
+# ORGANIC SURFACES & GROUNDING
+To match the user's uploaded aesthetic (stone, clay, matte textures):
+- ENVIRONMENT: Command "tactile, organic matte surfaces" such as fine-grained stone, micro-textured ceramic, or neutral mineral slabs. Avoid high-gloss or pure white backgrounds unless explicitly requested.
+- PHYSICS: Command "ambient occlusion contact shadows" exactly where the jewelry touches the surface to provide a realistic sense of weight and 3D volume. No "floating" appearance.
 
-- LENS & FOCAL LENGTH: Specify a "120mm f/4 Macro Lens". This focal length provides a flattering, compressed perspective that eliminates distortion, making bracelets, necklaces, and rings look geometrically true.
+# COLOR SCIENCE & MOOD
+- PALETTE: Command a "sophisticated neutral palette" using champagne, sand, taupe, and warm-leaning grays. Avoid clinical blue or oversaturated yellow tones.
+- FINISH: Command "zero digital noise" and "pristine material clarity." The final image must feel expensive, heavy, and physically real.
 
-- APERTURE & FOCUS STRATEGY (The "Luxury" Look):
-    - Command a "shallow depth of field" (approx. f/5.6 - f/8 on medium format).
-    - Explicitly state: "Tack-sharp critical focus on the primary focal points (e.g., the central pendant, the front diamonds, or the nearest curve of a bracelet)."
-    - Command a "smooth, luxurious bokeh fall-off" where elements further from the camera (like the back of a hoop or the underlying surface texture) become softly blurred. This isolates the subject and creates immense three-dimensional depth.
+# PRODUCT ADHERENCE (Identity Truth)
+- You must analyze [PRODUCT_IMAGE_X] and describe the jewelry's metal type, hallmarkings, and gemstone placement with 100% fidelity. Do NOT add features not found in the original images.
 
-- SURFACE TEXTURE & REFLECTIONS: The optics must resolve a "flawless, liquid-mirror polish." The lens must capture long, clean, continuous specular reflections from large studio softboxes following the curvature of the metal.
-
-# CONSTRAINTS
-- No CGI: Do not use terms like "3D render," "unreal engine," or "octane." Focus on raw photography terms.
-- No HALLUCINATIONS: Do not add any gems or features found in the composition prompt if they are not in the raw product images.
+# FINAL OUTPUT FORMAT
+Generate a single, dense technical narrative paragraph. Write it as a professional creative brief for a master renderer. Do not use lists or bullet points.
 
 === INPUT DATA ===
 
@@ -307,25 +310,7 @@ ${visualDescriptor}
 [REFERENCE_COMPOSITION_PROMPT]:
 ${compositionPrompt}
 
-[CATEGORY]: ${categoryNames[category] || 'jewelry'}
-
-=== YOUR TASK ===
-
-Create a MASTER RENDERING PROMPT that Nano Banana Pro (gemini-2.0-flash-exp with image generation) will use to create the final editorial photograph.
-
-The prompt MUST:
-1. Describe the jewelry piece EXACTLY as shown in the PRODUCT IMAGES (copy every visual detail from those specific images)
-2. Apply the composition and styling from the REFERENCE COMPOSITION PROMPT (camera angle, framing, positioning, lighting, background, mood)
-3. Include the MANDATORY PHOTOGRAPHY STANDARDS (Hasselblad X2D 100C Medium Format, 120mm f/4 Macro Lens, shallow depth of field f/5.6-f/8, tack-sharp critical focus on primary focal points, smooth luxurious bokeh fall-off, flawless liquid-mirror polish, long clean continuous specular reflections from large studio softboxes)
-4. Specify: 2K resolution (2048x2048), photorealistic quality, no CGI look, no text/logos/watermarks
-5. NEVER add jewelry elements that are not visible in the product images
-
-=== OUTPUT FORMAT ===
-
-Return ONLY the master prompt text. Start directly with the image description. No labels, no JSON, no explanations, no preamble.
-
-Example format:
-"Ultra high-definition 2K luxury editorial photograph of [detailed jewelry description matching the product images exactly]. [Exact composition and styling from reference]. Shot with 120mm f/4 Macro Lens on Hasselblad X2D 100C Medium Format camera. Shallow depth of field at f/5.6-f/8 with tack-sharp critical focus on [primary focal points like central pendant/front diamonds/nearest curve]. Smooth, luxurious bokeh fall-off creating immense three-dimensional depth. Flawless liquid-mirror polish with long, clean, continuous specular reflections from large studio softboxes following the metal's curvature. [Exact lighting setup and mood]. [Background details]. Photorealistic quality, no CGI artifacts, no text or watermarks."`;
+[CATEGORY]: ${categoryNames[category] || 'jewelry'}`;
 
   // Add the text prompt
   contentParts.push({ text: prompt });
@@ -353,7 +338,7 @@ Example format:
       return fallbackResponse.text.trim();
     } catch (fallbackError) {
       // Ultimate fallback: combine the inputs manually
-      return `Ultra high-definition 2K luxury jewelry editorial photograph. ${visualDescriptor} ${compositionPrompt} Shot with 120mm f/4 Macro Lens on Hasselblad X2D 100C Medium Format camera. Shallow depth of field at f/5.6-f/8 with tack-sharp critical focus on primary focal points. Smooth luxurious bokeh fall-off creating immense three-dimensional depth. Flawless liquid-mirror polish with long clean continuous specular reflections from large studio softboxes. Professional studio lighting, photorealistic quality.`;
+      return `Ultra high-definition 2K luxury jewelry editorial photograph. ${visualDescriptor} ${compositionPrompt} Shot with 120mm f/4 Macro Lens on Hasselblad X2D 100C or Phase One XF IQ4 medium format system. Shallow depth of field at f/5.6-f/8 with critical, razor-sharp focus on primary foreground facets and metal edges, smooth buttery bokeh fall-off towards background. Black Flags and White Reflectors create high-contrast linear reflections defining three-dimensional liquid metal look. Brilliant controlled specular highlights along sharpest metal edges and gemstone facets. Tactile organic matte surfaces—fine-grained stone, micro-textured ceramic, neutral mineral slabs. Ambient occlusion contact shadows provide realistic weight and 3D volume. Sophisticated neutral palette: champagne, sand, taupe, warm-leaning grays. Zero digital noise, pristine material clarity.`;
     }
   }
 }
