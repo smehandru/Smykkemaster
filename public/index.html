@@ -1740,16 +1740,28 @@
       console.log('perspectiveModalOpened:', perspectiveModalOpened);
       console.log('currentSession.selectedPerspectives:', currentSession?.selectedPerspectives);
 
+      // Use perspectives from session if available, otherwise use local variable
+      let effectivePerspectives = [];
+      if (currentSession.selectedPerspectives && currentSession.selectedPerspectives.length > 0) {
+        effectivePerspectives = currentSession.selectedPerspectives;
+        selectedPerspectives = [...currentSession.selectedPerspectives]; // Sync local variable
+        console.log('Using perspectives from session:', effectivePerspectives);
+      } else if (selectedPerspectives.length > 0) {
+        effectivePerspectives = selectedPerspectives;
+        console.log('Using perspectives from local variable:', effectivePerspectives);
+      }
+
       // If no perspectives selected and user hasn't opened the modal, auto-fetch and select all
-      if (selectedPerspectives.length === 0 && !perspectiveModalOpened) {
+      if (effectivePerspectives.length === 0 && !perspectiveModalOpened) {
         showStatus('Henter tilgjengelige perspektiver...', 'info', true);
         try {
           const perspRes = await fetch(`/api/perspectives/${currentSession.category}`);
           const perspData = await perspRes.json();
           if (perspData.perspectives && perspData.perspectives.length > 0) {
             availablePerspectives = perspData.perspectives;
-            selectedPerspectives = perspData.perspectives.map(p => p.id);
-            console.log('Auto-selected all perspectives:', selectedPerspectives.length);
+            effectivePerspectives = perspData.perspectives.map(p => p.id);
+            selectedPerspectives = [...effectivePerspectives];
+            console.log('Auto-selected all perspectives:', effectivePerspectives.length);
           }
         } catch (e) {
           console.warn('Could not fetch perspectives:', e);
@@ -1757,7 +1769,7 @@
       }
 
       // Still no perspectives? Show error
-      if (selectedPerspectives.length === 0) {
+      if (effectivePerspectives.length === 0) {
         showStatus('Ingen perspektiver funnet for denne kategorien', 'error', false);
         btn.classList.remove('loading');
         spinner.classList.add('hidden');
@@ -1783,24 +1795,24 @@
       // Filter prompts to only selected perspectives
       const filteredPrompts = {};
       const promptSource = Object.keys(customPrompts).length > 0 ? customPrompts : masterPrompts;
-      for (const id of selectedPerspectives) {
+      for (const id of effectivePerspectives) {
         if (promptSource[id]) {
           filteredPrompts[id] = promptSource[id];
         }
       }
 
       text.textContent = 'Genererer...';
-      showStatus(`Genererer ${selectedPerspectives.length} bilder...`, 'info', true);
+      showStatus(`Genererer ${effectivePerspectives.length} bilder...`, 'info', true);
 
       console.log('Sending to backend:');
       console.log('  filteredPrompts keys:', Object.keys(filteredPrompts));
-      console.log('  selectedPerspectives:', selectedPerspectives);
+      console.log('  effectivePerspectives:', effectivePerspectives);
 
       try {
         const res = await fetch(`/api/generate/${currentSession.id}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ customPrompts: filteredPrompts, selectedPerspectives })
+          body: JSON.stringify({ customPrompts: filteredPrompts, selectedPerspectives: effectivePerspectives })
         });
 
         const data = await res.json();
