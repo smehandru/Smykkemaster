@@ -294,7 +294,7 @@ To match the user's uploaded aesthetic (beige stone, clay, matte textures):
 - FINISH: Command "zero digital noise" and "pristine material clarity." The final image must feel expensive, heavy, and physically real.
 
 # PRODUCT ADHERENCE (Identity Truth)
-- You must analyze [PRODUCT_IMAGE_X] and describe the jewelry's metal type, hallmarkings, and gemstone placement with 100% fidelity. Do NOT add features not found in the original images.
+- You must analyze [PRODUCT_IMAGE_X] and describe the jewelry's metal type, hallmarkings, and gemstone placement with 100% fidelity. Do NOT add features not found in the original images and should not contain tags.
 
 # FINAL OUTPUT FORMAT
 Generate a single, dense technical narrative paragraph. Write it as a professional creative brief for a master renderer. Do not use lists or bullet points.
