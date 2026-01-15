@@ -1090,6 +1090,14 @@
       const savedSession = localStorage.getItem(STORAGE_KEYS.SESSION);
       if (savedSession) {
         currentSession = JSON.parse(savedSession);
+
+        // Restore perspective selection if exists
+        if (currentSession.selectedPerspectives) {
+          selectedPerspectives = [...currentSession.selectedPerspectives];
+          perspectiveModalOpened = true; // User has explicitly chosen perspectives
+          console.log('Restored perspective selection:', selectedPerspectives);
+        }
+
         updateSessionIndicator();
         // Check session status on server
         checkSessionStatus();
@@ -1409,6 +1417,13 @@
           body: JSON.stringify({ tagInfo, productDescription })
         });
 
+        // Update local session
+        if (!currentSession.tagInfo) currentSession.tagInfo = {};
+        currentSession.tagInfo = { ...currentSession.tagInfo, ...tagInfo };
+        if (!currentSession.productDescription) currentSession.productDescription = {};
+        currentSession.productDescription = { ...currentSession.productDescription, ...productDescription };
+        saveSessionToStorage();
+
         // Check Drive existence if product ID was updated and save section is visible
         if (tagInfo.productId && !document.getElementById('saveSection').classList.contains('hidden')) {
           checkDriveExistence(tagInfo.productId);
@@ -1530,6 +1545,12 @@
     }
 
     function savePerspectiveSelection() {
+      // Save to session
+      if (currentSession) {
+        currentSession.selectedPerspectives = [...selectedPerspectives];
+        saveSessionToStorage();
+        console.log('Saved perspective selection to session:', currentSession.selectedPerspectives);
+      }
       closePerspectiveModal();
       showStatus(`${selectedPerspectives.length} komposisjoner valgt`, 'success', false);
     }
@@ -1951,19 +1972,28 @@
 
     // Check if product exists in Google Drive
     async function checkDriveExistence(productId) {
+      console.log('checkDriveExistence called with productId:', productId);
       if (!productId) {
+        console.log('No productId provided, skipping check');
         return;
       }
 
       const statusDiv = document.getElementById('driveExistenceStatus');
       const textSpan = document.getElementById('driveExistenceText');
 
+      if (!statusDiv || !textSpan) {
+        console.error('Drive existence status elements not found');
+        return;
+      }
+
       try {
         statusDiv.classList.remove('hidden', 'new-product', 'exists-warning');
         textSpan.textContent = 'Sjekker Google Drive...';
+        console.log('Checking Drive existence for:', productId);
 
         const res = await fetch(`/api/check-drive-exists/${encodeURIComponent(productId)}`);
         const data = await res.json();
+        console.log('Drive existence check response:', data);
 
         if (data.exists) {
           statusDiv.classList.add('exists-warning');
