@@ -1564,11 +1564,9 @@
                   <strong style="color: var(--text-light);">Product Images (${p.images.productImages.count}):</strong><br>
                   ${p.images.productImages.description}
                 </div>
-                <div>
-                  <strong style="color: var(--text-light);">Composition Reference Image:</strong><br>
-                  ${p.images.compositionReferenceImage.present
-                    ? `✅ ${p.images.compositionReferenceImage.file} (Position: ${p.images.compositionReferenceImage.position})`
-                    : '❌ None'}
+                <div style="background: rgba(212, 175, 55, 0.1); padding: 0.5rem; border-radius: 4px; border-left: 2px solid var(--gold);">
+                  <strong style="color: var(--gold);">⚠️ Composition Reference:</strong><br>
+                  <span style="color: var(--text-light);">${p.images.compositionReferenceImage.note}</span>
                 </div>
               </div>
             </div>

@@ -271,17 +271,16 @@ async function regenerateImage(visualDescriptor, category, ethnicity, perspectiv
   };
 }
 
-// Generate a single image with explicit separation of product images and composition reference
-// This ensures the model understands which images are for jewelry design vs styling reference
+// Generate a single image with product images and composition prompt (text only, no composition image)
+// Composition guidance is provided through text instructions only
 async function generateSingleImageWithComposition(prompt, productImageBuffers, compositionImageBuffer = null) {
   return enqueueRequest(async () => {
     const model = initializeNanoBananaPro();
 
     const parts = [];
     const numProductImages = productImageBuffers ? productImageBuffers.length : 0;
-    const hasComposition = !!compositionImageBuffer;
 
-    // Add product reference images first
+    // Add product reference images
     if (productImageBuffers && productImageBuffers.length > 0) {
       for (let i = 0; i < productImageBuffers.length; i++) {
         parts.push({
@@ -293,26 +292,11 @@ async function generateSingleImageWithComposition(prompt, productImageBuffers, c
       }
     }
 
-    // Add composition reference image last (if available)
-    if (compositionImageBuffer) {
-      parts.push({
-        inlineData: {
-          mimeType: 'image/png',
-          data: compositionImageBuffer.toString('base64')
-        }
-      });
-    }
+    // NOTE: Composition reference image is NOT sent - only the text prompt for composition/styling
 
-    // Build instruction text that CLEARLY separates product images from composition reference
+    // Build instruction text using product images as reference
     let instructionText = '';
-    if (hasComposition) {
-      instructionText = `CRITICAL INSTRUCTIONS:
-- Images 1-${numProductImages} in this message are the PRODUCT IMAGES showing the actual jewelry piece. Copy EVERY detail of the jewelry design ONLY from these images.
-- Image ${numProductImages + 1} (the LAST image) is a COMPOSITION REFERENCE for styling ONLY. Use it ONLY for: camera angle, lighting, background, mood. DO NOT copy any jewelry design elements from it.
-- The jewelry in the composition reference is a DIFFERENT piece - IGNORE its design completely.
-
-${prompt}`;
-    } else if (numProductImages > 0) {
+    if (numProductImages > 0) {
       instructionText = `Using images 1-${numProductImages} in this message as exact reference for the jewelry design (showing the piece from ${numProductImages > 1 ? 'multiple angles' : 'one angle'}), ${prompt}`;
     } else {
       instructionText = prompt;
@@ -335,7 +319,7 @@ ${prompt}`;
         ]
       };
 
-      console.log('Sending request to Nano Banana Pro (with composition separation)...');
+      console.log('Sending request to Nano Banana Pro (composition via text only)...');
       const startTime = Date.now();
 
       const response = await model.generateContent(request);
@@ -392,17 +376,16 @@ async function generateDirectFromComposition(perspectives, visualDescriptor, ref
     const perspectiveId = perspective.id;
     const compositionPrompt = perspective.prompt;
 
-    const hasCompositionRef = !!compositionImageBuffers[perspectiveId];
-    console.log(`[${i + 1}/${perspectives.length}] Generating: ${perspectiveId} (composition ref: ${hasCompositionRef})`);
+    console.log(`[${i + 1}/${perspectives.length}] Generating: ${perspectiveId} (composition via text prompt)`);
 
     // Build combined prompt directly for Nano Banana Pro
-    const combinedPrompt = buildCombinedPrompt(visualDescriptor, compositionPrompt, referenceImageBuffers.length, hasCompositionRef);
+    const combinedPrompt = buildCombinedPrompt(visualDescriptor, compositionPrompt, referenceImageBuffers.length, false);
 
     try {
       const result = await generateSingleImageWithComposition(
         combinedPrompt,
         referenceImageBuffers,
-        hasCompositionRef ? compositionImageBuffers[perspectiveId] : null
+        null  // Composition image is NOT sent - only text prompt
       );
       results.push({
         perspectiveId,
@@ -430,6 +413,7 @@ async function generateDirectFromComposition(perspectives, visualDescriptor, ref
 }
 
 // Build combined prompt for direct generation (no Gemini step)
+// Composition is provided via text instructions only (no composition image sent)
 function buildCombinedPrompt(visualDescriptor, compositionPrompt, numProductImages, hasComposition) {
   return `Generate an ultra high-definition 2K luxury jewelry editorial photograph.
 
@@ -438,17 +422,14 @@ ${visualDescriptor}
 
 CRITICAL: Copy EVERY detail of the jewelry EXACTLY from the product images - shape, texture, finish, patterns, stones, metalwork. The jewelry design must match the product images 100%.
 
-${hasComposition ? `=== COMPOSITION & STYLING (from image ${numProductImages + 1} - the LAST image) ===
+=== COMPOSITION & STYLING ===
 ${compositionPrompt}
 
-Use the composition reference ONLY for:
+Follow the composition and styling instructions above for:
 - Camera angle and framing
 - Lighting setup and direction
 - Background and environment
 - Overall mood and atmosphere
-
-⚠️ DO NOT copy ANY jewelry design from the composition reference - it shows a DIFFERENT piece.` : `=== COMPOSITION & STYLING ===
-${compositionPrompt}`}
 
 === REQUIREMENTS ===
 - 2K resolution, photorealistic quality
@@ -471,15 +452,14 @@ async function generateFromMasterPrompts(masterPrompts, referenceImageBuffers, c
     const perspectiveId = perspectiveIds[i];
     const masterPrompt = masterPrompts[perspectiveId];
 
-    const hasCompositionRef = !!compositionImageBuffers[perspectiveId];
-    console.log(`[${i + 1}/${perspectiveIds.length}] Generating: ${perspectiveId} (product images: ${referenceImageBuffers.length}, composition ref: ${hasCompositionRef})`);
+    console.log(`[${i + 1}/${perspectiveIds.length}] Generating: ${perspectiveId} (product images: ${referenceImageBuffers.length}, composition via text)`);
 
     try {
-      // Generate with explicit separation of product images and composition reference
+      // Generate with product images only (composition via text prompt)
       const result = await generateSingleImageWithComposition(
         masterPrompt,
         referenceImageBuffers,
-        hasCompositionRef ? compositionImageBuffers[perspectiveId] : null
+        null  // Composition image is NOT sent
       );
       results.push({
         perspectiveId,
@@ -534,12 +514,12 @@ function getQueueStatus() {
 async function regenerateSingleImage(masterPrompt, productImageBuffers, compositionImageBuffer = null) {
   console.log(`Regenerating single image with composition-based system`);
   console.log(`  Product images: ${productImageBuffers ? productImageBuffers.length : 0}`);
-  console.log(`  Composition reference: ${compositionImageBuffer ? 'yes' : 'no'}`);
+  console.log(`  Composition: via text prompt only (no image sent)`);
 
   const result = await generateSingleImageWithComposition(
     masterPrompt,
     productImageBuffers,
-    compositionImageBuffer
+    null  // Composition image is NOT sent
   );
 
   return result;

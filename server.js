@@ -781,20 +781,17 @@ app.get('/api/nano-banana-input/:sessionId', requireAuth, async (req, res) => {
   const perspectiveInputs = [];
 
   for (const p of perspectives) {
-    const hasCompositionRef = !!p.imageFile;
-
     // Build the exact prompt that would be sent to Nano Banana Pro
     const combinedPrompt = imageGenerator.buildCombinedPrompt(
       visualDescriptor,
       p.prompt,
       productImageCount,
-      hasCompositionRef
+      false  // Composition image is NOT sent
     );
 
     perspectiveInputs.push({
       perspectiveId: p.id,
       perspectiveName: p.name || p.id,
-      imageFile: p.imageFile || 'none',
       compositionPrompt: p.prompt,
       fullPromptToNanoBananaPro: combinedPrompt,
       images: {
@@ -803,9 +800,8 @@ app.get('/api/nano-banana-input/:sessionId', requireAuth, async (req, res) => {
           description: session.rawImages ? session.rawImages.map((img, i) => `Image ${i + 1}: ${img.originalName}`).join(', ') : 'No images'
         },
         compositionReferenceImage: {
-          present: hasCompositionRef,
-          file: p.imageFile || null,
-          position: hasCompositionRef ? `Image ${productImageCount + 1} (LAST)` : null
+          sent: false,
+          note: 'Composition guidance is provided via TEXT PROMPT ONLY (no image sent to model)'
         }
       }
     });

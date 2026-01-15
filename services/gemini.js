@@ -173,7 +173,7 @@ async function generateProductDescription(imageBuffers, category, tagInfo) {
   }));
 
   const categoryInstructions = {
-    'ring': 'Ringstørrelse i mm diameter/US size (f.eks. "52mm/US 6")',
+    'ring': 'Ringstørrelse i mm (KUN millimeter, IKKE US size)',
     'oredobber': 'L:lengde, B:bredde i mm (f.eks. "L:25mm, B:15mm")',
     'halskjede': '',
     'armbaand': '',
@@ -182,10 +182,22 @@ async function generateProductDescription(imageBuffers, category, tagInfo) {
 
   const sizeNote = categoryInstructions[category] ? ` Størrelse: ${categoryInstructions[category]}.` : '';
 
+  // Special instructions for rings to explain the size marking
+  const ringSizeInstruction = category === 'ring' ? `
+
+VIKTIG FOR RINGER - SLIk LESES STØRRELSEN:
+- Ringen kan ha størrelsesmarkering skrevet PÅ eller RUNDT ringen
+- Tallet som er markert viser størrelsen som ringen DEKKER (ikke innvendig diameter)
+- Hvis det er tall både OVER og UNDER ringen: tallet OVER er MINDRE enn ringen, tallet UNDER er STØRRE
+- Eksempel: Hvis "18" står over og "20" står under, er ringen størrelse 19mm
+- Les NØYAKTIG hva som står - ikke gjett
+- Returner KUN i millimeter (mm), ALDRI US size
+` : '';
+
   const prompt = `Skriv en KORT og minimalistisk produktbeskrivelse på norsk for dette smykket.
 
 Kategori: ${category}
-
+${ringSizeInstruction}
 Beskrivelsen skal være MAKS 2 setninger og inneholde:
 1. Kort beskrivelse av designet (stil, form, detaljer)
 2. "22 karat gull"
@@ -194,7 +206,7 @@ ${category === 'ring' || category === 'oredobber' ? '3. Størrelsesdimensjoner' 
 Returner som JSON:
 {
   "description": "Kort beskrivelse. 22 karat gull.${sizeNote}",
-  "size": "${category === 'ring' ? 'mm/US size' : category === 'oredobber' ? 'L:mm, B:mm' : ''}"
+  "size": "${category === 'ring' ? 'KUN mm (f.eks. 19mm)' : category === 'oredobber' ? 'L:mm, B:mm' : ''}"
 }
 
 Vær KONSIS - ikke skriv lange beskrivelser. Maksimalt 2 korte setninger.`;
