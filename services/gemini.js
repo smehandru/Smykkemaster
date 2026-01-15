@@ -286,7 +286,7 @@ Do not use generic "softbox" terms. Use professional lighting architecture:
 
 # ORGANIC SURFACES & GROUNDING
 To match the user's uploaded aesthetic:
-- ENVIRONMENT: Command randomly between hyperglossed pure white bakground or "tactile, organic matte surfaces" such as fine-grained beige stone or neutral emerald green mineral slabs.
+- ENVIRONMENT: Command randomly between pure white bakground or "tactile, organic matte surfaces" such as fine-grained beige stone or neutral emerald green mineral slabs.
 - PHYSICS: Command "ambient occlusion contact shadows" exactly where the jewelry touches the surface to provide a realistic sense of weight and 3D volume. No "floating" appearance.
 
 # COLOR SCIENCE & MOOD
