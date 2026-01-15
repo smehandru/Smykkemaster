@@ -859,6 +859,12 @@
           <textarea id="descriptionInput"></textarea>
         </div>
 
+        <!-- Drive Existence Check in Analysis Section -->
+        <div id="analysisDriverExistenceStatus" class="drive-existence-status hidden" style="margin-top: 1rem;">
+          <span class="check-icon">✓</span>
+          <span id="analysisDriveExistenceText">Sjekker Google Drive...</span>
+        </div>
+
         <div class="actions-bar">
           <button class="btn btn-outline" onclick="updateAnalysis()">Oppdater</button>
           <button class="btn btn-outline" onclick="openAdvancedModal()">Advanced</button>
@@ -1067,6 +1073,8 @@
       document.getElementById('sheetsStatus').classList.remove('completed');
       document.getElementById('driveExistenceStatus').classList.add('hidden');
       document.getElementById('driveExistenceStatus').classList.remove('new-product', 'exists-warning');
+      document.getElementById('analysisDriverExistenceStatus').classList.add('hidden');
+      document.getElementById('analysisDriverExistenceStatus').classList.remove('new-product', 'exists-warning');
       document.getElementById('categorySelect').value = '';
       document.getElementById('uploadBtn').disabled = true;
       document.getElementById('statusBar').classList.add('hidden');
@@ -1388,11 +1396,28 @@
         document.getElementById('productIdInput').value = data.tagInfo.productId || '';
         document.getElementById('weightInput').value = data.tagInfo.weight || '';
         document.getElementById('laborCostInput').value = data.tagInfo.laborCost || '';
+
+        // Store tagInfo in current session
+        if (currentSession) {
+          currentSession.tagInfo = data.tagInfo;
+          saveSessionToStorage();
+        }
+
+        // Check Drive existence when product ID is available
+        if (data.tagInfo.productId) {
+          checkDriveExistence(data.tagInfo.productId);
+        }
       }
 
       if (data.productDescription) {
         document.getElementById('sizeInput').value = data.productDescription.size || '';
         document.getElementById('descriptionInput').value = data.productDescription.description || '';
+
+        // Store productDescription in current session
+        if (currentSession) {
+          currentSession.productDescription = data.productDescription;
+          saveSessionToStorage();
+        }
       }
     }
 
@@ -1520,11 +1545,18 @@
     }
 
     function togglePerspective(id) {
+      console.log('togglePerspective called with id:', id);
+      console.log('selectedPerspectives before toggle:', selectedPerspectives);
+
       if (selectedPerspectives.includes(id)) {
         selectedPerspectives = selectedPerspectives.filter(p => p !== id);
+        console.log('Removed perspective:', id);
       } else {
         selectedPerspectives.push(id);
+        console.log('Added perspective:', id);
       }
+
+      console.log('selectedPerspectives after toggle:', selectedPerspectives);
       const category = document.getElementById('categorySelect').value;
       renderPerspectiveModal(availablePerspectives, category);
     }
@@ -1987,33 +2019,51 @@
         return;
       }
 
-      const statusDiv = document.getElementById('driveExistenceStatus');
-      const textSpan = document.getElementById('driveExistenceText');
+      // Get both status divs (one in analysis section, one in save section)
+      const saveStatusDiv = document.getElementById('driveExistenceStatus');
+      const saveTextSpan = document.getElementById('driveExistenceText');
+      const analysisStatusDiv = document.getElementById('analysisDriverExistenceStatus');
+      const analysisTextSpan = document.getElementById('analysisDriveExistenceText');
 
-      if (!statusDiv || !textSpan) {
+      // Update both if they exist
+      const statusDivs = [
+        { div: saveStatusDiv, text: saveTextSpan },
+        { div: analysisStatusDiv, text: analysisTextSpan }
+      ].filter(item => item.div && item.text);
+
+      if (statusDivs.length === 0) {
         console.error('Drive existence status elements not found');
         return;
       }
 
       try {
-        statusDiv.classList.remove('hidden', 'new-product', 'exists-warning');
-        textSpan.textContent = 'Sjekker Google Drive...';
+        // Reset all statuses to loading state
+        statusDivs.forEach(({ div, text }) => {
+          div.classList.remove('hidden', 'new-product', 'exists-warning');
+          text.textContent = 'Sjekker Google Drive...';
+        });
+
         console.log('Checking Drive existence for:', productId);
 
         const res = await fetch(`/api/check-drive-exists/${encodeURIComponent(productId)}`);
         const data = await res.json();
         console.log('Drive existence check response:', data);
 
-        if (data.exists) {
-          statusDiv.classList.add('exists-warning');
-          textSpan.textContent = `Produktet ${productId} eksisterer allerede i Google Drive`;
-        } else {
-          statusDiv.classList.add('new-product');
-          textSpan.textContent = `Produktet ${productId} eksisterer ikke i Google Drive ennå ✓`;
-        }
+        // Update all status divs with result
+        statusDivs.forEach(({ div, text }) => {
+          if (data.exists) {
+            div.classList.add('exists-warning');
+            text.textContent = `Produktet ${productId} eksisterer allerede i Google Drive`;
+          } else {
+            div.classList.add('new-product');
+            text.textContent = `Produktet ${productId} eksisterer ikke i Google Drive ennå ✓`;
+          }
+        });
       } catch (error) {
         console.error('Drive existence check error:', error);
-        statusDiv.classList.add('hidden');
+        statusDivs.forEach(({ div }) => {
+          div.classList.add('hidden');
+        });
       }
     }
 
