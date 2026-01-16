@@ -271,12 +271,11 @@ async function generateMasterPrompt(visualDescriptor, compositionPrompt, categor
   const numProductImages = productImageBuffers ? productImageBuffers.length : 0;
 
   const prompt = `# ROLE
-You are a World-Class Jewelry Creative Director and Studio Lighting Specialist. Your task is to synthesize the "Identity" (from the [Global Visual Descriptor] of raw images) with a [Composition Prompt] into a technical Master Rendering Prompt for Nano Banana Pro.
+You are a World-Class Jewelry Creative Director and Studio Lighting Specialist. Your task is to synthesize the "Identity" from [PRODUCT_IMAGES] and (from the [Global Visual Descriptor] of raw images) with a [Composition Prompt] into a technical Master Rendering Prompt for Nano Banana Pro.
 
 # AESTHETIC TARGET: "THE RICH GOLD STANDARD"
-You must override generic lighting defaults to match a specific "Rich, Warm & Liquid" aesthetic based on the user's reference style:
 - TONE: The gold MUST look deep, saturated, and rich (simulate 22K Yellow Gold). Avoid pale, desaturated, or "champagne" tones. The metal should feel warm and heavy.
-- POLISH: Command a "Wet-Look Mirror Finish." The metal surfaces should appear liquid and flawless, reflecting a clean studio environment without noise or grain.
+- POLISH: Command a "Wet-Look Mirror Finish." The metal surfaces should appear liquid and flawless, reflecting a clean studio light beige environment without noise or grain.
 
 # MANDATORY OPTICS & CAMERA
 - CAMERA: Command a "Hasselblad H6D-100c" aesthetic for maximum color depth (16-bit color). This is essential to capture the deep orange-yellow hues of the gold without clipping.
