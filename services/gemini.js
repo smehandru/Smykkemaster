@@ -270,34 +270,23 @@ async function generateMasterPrompt(visualDescriptor, compositionPrompt, categor
   // Build the prompt that references the images
   const numProductImages = productImageBuffers ? productImageBuffers.length : 0;
 
-  const prompt = `# ROLE
-You are a Senior Jewelry Creative Director and High-End Commercial Photographer. Your mission is to translate raw jewelry images [PRODUCT_IMAGE_X] into a hyper-realistic, 2K-resolution master rendering prompt for Nano Banana Pro, using a text-based [REFERENCE_COMPOSITION_PROMPT] as the stylistic and spatial guide.
+  const prompt = `# 1. THE "IDENTITY LOCK" (Strict)
+- The jewelry's physical traits from [PRODUCT_IMAGE_X] are SACRED. You must analyze and describe the metal type (e.g., 18k Gold), stone count, unique flaws, and hallmarks exactly as they appear in the raw images.
+- **CRITICAL:** Do NOT allow the renderer to "fix," "symmetrize," or "hallucinate" new details. If the chain is tangled in the raw photo, describe the chain links accurately, but instruct the renderer to *arrange* them neatly.
 
-# MANDATORY OPTICS (The "Phase One" Aesthetic)
-To ensure the premium, mirror-polished look from the user's reference style, you MUST command these optics:
-- CAMERA: Command a "Hasselblad X2D 100C" or "Phase One XF IQ4" medium format system for maximum dynamic range and 16-bit color depth.
-- LENS: Specify a "120mm f/4 Macro Lens" to eliminate distortion and ensure geometric perfection.
-- FOCUS STRATEGY: Command a "shallow depth of field" (f/5.6 - f/8 on medium format).
+# 2. THE "SCENE DEFINITION" (Hardcoded Aesthetic)
+You do not need external composition instructions. You must ALWAYS command this specific scene:
+- **ENVIRONMENT:** A "High-End Light Beige / Sandstone" surface (approx Hex: #F5F5DC). Use terms like "Honed Travertine," "Matte Limestone," or "Fine-Grain Organic Sand" to introduce tactile luxury without visual noise.
+- **PLACEMENT:** Command "Natural, Organic Gravity." The jewelry should lay or stand as if placed effortlessly by a stylist. Avoid rigid symmetry. Let the chain drape naturally over the stone texture.
+- **LIGHTING:** "Soft-Focus Daylight" with "Warm Golden Undertones." Create a mood of "Quiet Luxury" and "Effortless Elegance."
 
-# STRUCTURED STUDIO LIGHTING
-Do not use generic "softbox" terms. Use professional lighting architecture:
-- LIGHT SHAPING: Command the use of "Black Flags" and "White Reflectors" to create high-contrast, linear reflections. This is critical for defining the three-dimensional "liquid metal" look of polished gold and silver.
-- SPECULARITY: Command "brilliant, controlled specular highlights" along the sharpest metal edges and gemstone facets to create "fire" and "brilliance" without washing out details.
-
-# ORGANIC SURFACES & GROUNDING
-To match the user's uploaded aesthetic (stone, clay, matte textures):
-- ENVIRONMENT: Command warm, light beige tone with a fine matte finish. This sophisticated neutral backdrop provides an organic contrast that warms the metallic elements and enhances the sense of premium quality without distracting from the product.
-- PHYSICS: Command "ambient occlusion contact shadows" exactly where the jewelry touches the surface to provide a realistic sense of weight and 3D volume. No "floating" appearance, no tags and no red threads.
-
-# COLOR SCIENCE & MOOD
-- PALETTE: Command a "sophisticated neutral palette" using champagne, sand, taupe, and warm-leaning grays. Avoid clinical blue or oversaturated yellow tones.
-- FINISH: Command "zero digital noise" and "pristine material clarity." The final image must feel expensive, heavy, and physically real.
-
-# PRODUCT ADHERENCE (Identity Truth)
-- You must analyze [PRODUCT_IMAGE_X] and describe the jewelry's metal type, hallmarkings, and gemstone placement with 100% fidelity. Do NOT add features not found in the original images.
+# 3. MANDATORY OPTICS (The "Expensive" Look)
+- **CAMERA:** "Hasselblad X2D 100C" aesthetic for 16-bit color depth.
+- **LENS:** "100mm Macro" to compress the scene and flatter the jewelry.
+- **FOCUS:** "Shallow Depth of Field." Command razor-sharp focus on the main design element (e.g., the diamond or pendant face) and allow the back of the band/chain and the stone background to fade into a smooth, creamy bokeh.
 
 # FINAL OUTPUT FORMAT
-Generate a single, dense technical narrative paragraph. Write it as a professional creative brief for a master renderer. Do not use lists or bullet points.
+Generate a single, dense, narrative paragraph. Start by describing the product with extreme precision, then describe the beige/sandstone environment it sits in.
 === INPUT DATA ===
 
 [PRODUCT_IMAGES]: Images 1-${numProductImages} in this message
@@ -305,9 +294,6 @@ These are the raw product photos of the actual jewelry piece. Study every detail
 
 [PRODUCT_VISUAL_DESCRIPTOR]:
 ${visualDescriptor}
-
-[REFERENCE_COMPOSITION_PROMPT]:
-${compositionPrompt}
 
 [CATEGORY]: ${categoryNames[category] || 'jewelry'}`;
 
