@@ -295,7 +295,7 @@ Do not use generic "softbox" terms. Use professional lighting architecture:
 
 # ORGANIC SURFACES & GROUNDING
 To match the user's uploaded aesthetic:
-- ENVIRONMENT: Command randomly between pure white bakground or "tactile, organic matte surfaces" such as fine-grained beige stone or neutral emerald green mineral slabs.
+- ENVIRONMENT: Command a seamless, minimalist studio surface rendered in a warm, light beige tone with a fine matte finish. This sophisticated neutral backdrop provides an organic contrast that warms the metallic elements and enhances the sense of premium quality without distracting from the product.
 - PHYSICS: Command "ambient occlusion contact shadows" exactly where the jewelry touches the surface to provide a realistic sense of weight and 3D volume. No "floating" appearance.
 
 # COLOR SCIENCE & MOOD
@@ -320,6 +320,9 @@ These are the raw product photos of the actual jewelry piece. Study every detail
 
 [PRODUCT_VISUAL_DESCRIPTOR]:
 ${visualDescriptor}
+
+[REFERENCE_COMPOSITION_PROMPT]:
+${compositionPrompt}
 
 [CATEGORY]: ${categoryNames[category] || 'jewelry'}`;
 
