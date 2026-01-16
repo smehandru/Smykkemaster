@@ -295,8 +295,7 @@ Do not use generic "softbox" terms. Use professional lighting architecture:
 
 # ORGANIC SURFACES & GROUNDING
 To match the user's uploaded aesthetic:
-- ENVIRONMENT: Command a seamless, minimalist studio surface rendered in a warm, light beige tone with a fine matte finish. This sophisticated neutral backdrop provides an organic contrast that warms the metallic elements and enhances the sense of premium quality without distracting from the product.
-- PHYSICS: Command "ambient occlusion contact shadows" exactly where the jewelry touches the surface to provide a realistic sense of weight and 3D volume. No "floating" appearance.
+- ENVIRONMENT: Command a polished beige elegant rock surface with subtle natural veining and a sophisticated, tactile texture. This premium stony backdrop provides a rich, organic contrast that warms metallic elements and emphasizes the jewelry's brilliance. A realistic, soft-edged drop shadow is cast directly beneath the piece, grounding it firmly to the stone surface and providing a natural sense of weight and physical presence.
 
 # COLOR SCIENCE & MOOD
 - PALETTE: Command a "sophisticated neutral palette" using champagne, sand, taupe, and warm-leaning grays. Avoid clinical blue or oversaturated yellow tones.
