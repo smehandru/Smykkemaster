@@ -271,34 +271,25 @@ async function generateMasterPrompt(visualDescriptor, compositionPrompt, categor
   const numProductImages = productImageBuffers ? productImageBuffers.length : 0;
 
   const prompt = `# ROLE
-You are a Senior Jewelry Creative Director and High-End Commercial Photographer. Your mission is to translate raw jewelry images [PRODUCT_IMAGE_X] into a hyper-realistic, 2K-resolution master rendering prompt for Nano Banana Pro, using a text-based [REFERENCE_COMPOSITION_PROMPT] as the stylistic and spatial guide.
+You are a World-Class Jewelry Creative Director and Studio Lighting Specialist. Your task is to synthesize the "Identity" (from the [Global Visual Descriptor] of raw images) with a [Composition Prompt] into a technical Master Rendering Prompt for Nano Banana Pro.
 
-# MANDATORY OPTICS (The "Phase One" Aesthetic)
-To ensure the premium, mirror-polished look from the user's reference style, you MUST command these optics:
-- CAMERA: Command a "Hasselblad X2D 100C" or "Phase One XF IQ4" medium format system for maximum dynamic range and 16-bit color depth.
-- LENS: Specify a "120mm f/4 Macro Lens" to eliminate distortion and ensure geometric perfection.
-- FOCUS STRATEGY: Command a "shallow depth of field" (f/5.6 - f/8 on medium format) on all jewelry types but necklaces.
+# AESTHETIC TARGET: "THE RICH GOLD STANDARD"
+You must override generic lighting defaults to match a specific "Rich, Warm & Liquid" aesthetic based on the user's reference style:
+- TONE: The gold MUST look deep, saturated, and rich (simulate 22K Yellow Gold). Avoid pale, desaturated, or "champagne" tones. The metal should feel warm and heavy.
+- POLISH: Command a "Wet-Look Mirror Finish." The metal surfaces should appear liquid and flawless, reflecting a clean studio environment without noise or grain.
 
-# STRUCTURED STUDIO LIGHTING
-Do not use generic "softbox" terms. Use professional lighting architecture:
-- LIGHT SHAPING: Command the use of "Black Flags" and "White Reflectors" to create high-contrast, linear reflections. This is critical for defining the three-dimensional "liquid metal" look of polished gold and silver.
-- SPECULARITY: Command "brilliant, controlled specular highlights" along the sharpest metal edges and gemstone facets to create "fire" and "brilliance" without washing out details.
+# MANDATORY OPTICS & CAMERA
+- CAMERA: Command a "Hasselblad H6D-100c" aesthetic for maximum color depth (16-bit color). This is essential to capture the deep orange-yellow hues of the gold without clipping.
+- LENS: Specify "100mm Macro f/8". Ensure the entire object is reasonably sharp (deep depth of field) while maintaining a soft, creamy background separation.
+- CLARITY: Command "High-Frequency Detail" on surface textures (e.g., ridges, milgrain, or pearl luster).
 
-# ORGANIC SURFACES & GROUNDING
-To match the user's uploaded aesthetic:
-- ENVIRONMENT: Command randomly between pure white bakground or "tactile, organic matte surfaces" such as fine-grained beige stone or neutral emerald green mineral slabs.
-- PHYSICS: Command "ambient occlusion contact shadows" exactly where the jewelry touches the surface to provide a realistic sense of weight and 3D volume. No "floating" appearance.
-
-# COLOR SCIENCE & MOOD
-- PALETTE: Command a "sophisticated neutral palette" using champagne, sand, taupe, and warm-leaning grays. Avoid clinical blue or oversaturated yellow tones.
-- FINISH: Command "zero digital noise" and "pristine material clarity." The final image must feel expensive, heavy, and physically real.
-
-# PRODUCT ADHERENCE (Identity Truth)
-- You must analyze [PRODUCT_IMAGE_X] and describe the jewelry's metal type, hallmarkings, and gemstone placement with 100% fidelity. Do NOT add features not found in the original images and should not contain tags or threads.
+# LIGHTING ARCHITECTURE (The "Soft-Pop" Setup)
+- DIFFUSION: Command "Large, Broad Softboxes" placed close to the subject. This creates large, smooth white reflections on the curved metal surfaces (the "liquid" look).
+- CONTRAST: Use "Negative Fill" (Black Flags) on the sides to create dark edges on the gold. This contrast is what makes the gold look shiny and metallic rather than flat yellow.
+- GEMSTONE RENDERING: If pearls or soft stones are present, command "Soft Satin Luster" with a gentle gradient, contrasting against the hard sharpness of the metal.
 
 # FINAL OUTPUT FORMAT
-Generate a single, dense technical narrative paragraph. Write it as a professional creative brief for a master renderer. Do not use lists or bullet points.
-
+Generate a single, dense technical narrative paragraph. Use emotive keywords like "lustrous," "deep saturation," "liquid polish," and "soft-touch background.
 === INPUT DATA ===
 
 [PRODUCT_IMAGES]: Images 1-${numProductImages} in this message
