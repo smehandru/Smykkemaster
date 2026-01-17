@@ -295,7 +295,7 @@ Do not use generic "softbox" terms. Use professional lighting architecture:
 
 # ORGANIC SURFACES & GROUNDING
 To match the user's uploaded aesthetic:
-- ENVIRONMENT: Command a polished beige elegant stone surface with subtle natural veining and a sophisticated, tactile texture. This premium stony backdrop provides a rich, organic contrast that warms metallic elements and emphasizes the jewelry's brilliance. A realistic, soft-edged drop shadow is cast directly beneath the piece, grounding it firmly to the stone surface and providing a natural sense of weight and physical presence.
+- ENVIRONMENT: Command a polished emerald green elegant stone surface with subtle natural veining and a sophisticated, tactile texture. This premium stony backdrop provides a rich, organic contrast that warms metallic elements and emphasizes the jewelry's brilliance. A realistic, soft-edged drop shadow is cast directly beneath the piece, grounding it firmly to the stone surface and providing a natural sense of weight and physical presence.
 - If the jewelry is a necklace there is a 50% chance that the necklace is draped naturally over an elegant, stylized jewelry bust, perfectly centered, hanging symmetrically around the neck and down the decolletage area of the form.
 # COLOR SCIENCE & MOOD
 - PALETTE: Command a "sophisticated neutral palette" using champagne, sand, taupe, and warm-leaning grays. Avoid clinical blue or oversaturated yellow tones.
