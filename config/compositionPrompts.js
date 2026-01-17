@@ -23,7 +23,7 @@ Styling & Mood: The background is a seamless, neutral ivory-white gradient that 
       id: 'ring3',
       name: 'Frontal Top View',
       imageFile: 'ring3.png',
-      prompt: `Placement: The jewelry is positioned as the central focal point, viewed from a slightly elevated frontal angle that clearly showcases the top face and the curve of the band. It rests flat on a clean, solid, off-white surface. A subtle, soft-edged drop shadow is cast directly beneath the piece, grounding it and providing a sense of depth without being distracting.
+      prompt: `Placement: The jewelry is positioned as the central focal point, viewed from a slightly elevated frontal angle that clearly showcases the top face and the curve of the band. The background is pure #FFFFFF white. It rests flat on a clean, solid, white surface. A subtle, soft-edged drop shadow is cast directly beneath the piece, grounding it and providing a sense of depth without being distracting.
 Lighting: The scene features professional high-key studio lighting, creating a bright and clean aesthetic. The primary light source is diffused and positioned above and slightly to the front, generating bright, specular highlights on the polished surface. The interior of the band is illuminated to show depth and details like hallmarks.
 Styling & Mood: The background is a seamless, neutral ivory-white gradient that fades into a pure white, ensuring the jewelry is the sole focus. The overall aesthetic is clean, luxurious, and highly detailed, ideal for premium e-commerce product pages where clarity and sparkle are paramount.`
     },
@@ -42,9 +42,9 @@ Styling & Mood: The background is a seamless, minimalist ivory-to-white gradient
       id: 'halskjede1',
       name: 'U-Shape Drape',
       imageFile: 'halskjede1.png',
-      prompt: `Placement: The jewelry is arranged in a fluid, symmetrical "U-shaped" arc or drape, mimicking the natural hang of a piece worn around a neckline. The object is viewed from a direct top-down (90-degree) perspective, centered horizontally within the frame. The top portions of the piece exit the frame symmetrically at the upper edge, creating a clean, continuous visual flow that suggests an infinite length.
+      prompt: `Placement: The jewelry is arranged in a fluid, symmetrical "U-shaped" arc or drape, mimicking the natural hang of a piece worn around a neckline. The object is viewed hanging, centered horizontally within the frame. The top portions of the piece exit the frame symmetrically at the upper edge, creating a clean, continuous visual flow that suggests an infinite length.
 Lighting: The scene is illuminated with professional, highly diffused high-key lighting to ensure uniform brightness across the entire curved arrangement. The lighting setup is specifically designed to accentuate the three-dimensional volume of any repeating or curved components by creating soft, controlled highlights on their uppermost surfaces. All harsh glares are eliminated, leaving only smooth tonal gradients that define the material's texture.
-Styling & Mood: The background is a seamless, pure white or light neutral surface, offering a high-contrast environment that emphasizes the physical details of the product. A very subtle, soft-edged drop shadow is present at the base to ground the jewelry, giving it a realistic sense of weight and presence on the surface. The mood is one of refined luxury, technical clarity, and high-end editorial precision.`
+Styling & Mood: The background is pure #FFFFFF white. A very subtle, soft-edged drop shadow is present at the base to ground the jewelry, giving it a realistic sense of weight and presence on the surface. The mood is one of refined luxury, technical clarity, and high-end editorial precision.`
     },
     {
       id: 'halskjede2',
@@ -71,7 +71,7 @@ Styling & Mood: The background is a seamless, solid neutral-toned surface (such 
       imageFile: 'armbaand1.png',
       prompt: `Placement: The jewelry item is arranged in a relaxed, horizontal oval or circular loop, resting flat on a solid surface. It is captured from a slightly elevated three-quarter perspective, providing a sense of depth and scale. A primary focal component or charm is positioned at the bottom-center of the arrangement, oriented directly toward the viewer. A subtle fastening mechanism is visible at the rear of the loop.
 Lighting: The scene utilizes professional high-key studio lighting with a large primary diffuser to create an even, soft glow across all metallic surfaces. The lighting is balanced to produce gentle specular highlights that define the polished finish and physical contours of the piece. Shadowing is kept soft and minimal, with a light drop shadow grounding the object to the surface without distracting from the fine details.
-Styling & Mood: The background is a seamless, minimalist pure white, ensuring the product is isolated as the sole focus of the image. The overall aesthetic is clean, elegant, and sophisticated, mirroring the hyper-detailed "hero shots" found in luxury brand catalogs. The mood is professional and precise, emphasizing material quality and craftsmanship.`
+Styling & Mood: The background is pure #FFFFFF white, seamless, ensuring the product is isolated as the sole focus of the image. The overall aesthetic is clean, elegant, and sophisticated, mirroring the hyper-detailed "hero shots" found in luxury brand catalogs. The mood is professional and precise, emphasizing material quality and craftsmanship.`
     },
     {
       id: 'armbaand2',
@@ -103,7 +103,7 @@ Styling & Mood: The background is a seamless, minimalist pure white, creating a 
       imageFile: 'armbaand5.png',
       prompt: `Placement: The jewelry item is positioned as a rigid, circular or oval structure, captured from an elevated three-quarter profile angle. This perspective is designed to showcase the external surface curvature while simultaneously revealing the internal depth and structural details of the piece. The object is tilted slightly toward the viewer to create a sense of three-dimensional volume and scale.
 Lighting: The scene features bright, high-key studio lighting characterized by strong overhead diffusion. This setup generates a long, clean specular highlight along the upper polished edge of the material, emphasizing a high-gloss finish. The lighting is balanced to illuminate the interior of the piece with soft, even light, ensuring that any internal textures or patterns are clearly visible without deep, obscuring shadows.
-Styling & Mood: The background is a seamless, minimalist pure white, providing a high-contrast environment that focuses entirely on the product's form. A subtle, soft-edged drop shadow is cast at the bottom-left base of the piece, grounding it to the surface and providing a realistic sense of physical weight. The overall mood is luxurious, sophisticated, and technically precise, typical of flagship "hero shots" in premium jewelry catalogs.`
+Styling & Mood: The background pure #FFFFFF white, seamless, providing a high-contrast environment that focuses entirely on the product's form. A subtle, soft-edged drop shadow is cast at the bottom-left base of the piece, grounding it to the surface and providing a realistic sense of physical weight. The overall mood is luxurious, sophisticated, and technically precise, typical of flagship "hero shots" in premium jewelry catalogs.`
     },
     {
       id: 'armbaand6',
@@ -130,7 +130,7 @@ Styling & Mood: The background is a seamless, minimalist pure white, providing a
       imageFile: 'oredobber1.png',
       prompt: `Placement: The jewelry is staged as a coordinated pair in a staggered, dual-perspective composition. One component is positioned vertically in the background, oriented to provide a direct frontal view of its primary decorative surface. The second component is placed in the foreground at a tilted, three-quarter angle, specifically oriented to reveal the side profile, internal depth, and any mechanical or fastening details.
 Lighting: The scene utilizes professional high-key studio lighting with multi-directional diffusion. The setup is designed to create sharp, brilliant specular highlights on the uppermost polished edges of both pieces, emphasizing material quality and fine detail. The light is balanced to ensure the interior of the foreground piece is clearly illuminated, revealing structural features without deep, obscuring shadows.
-Styling & Mood: The background is a seamless, minimalist pure white or ultra-light neutral gradient, ensuring the product pair is the absolute focus. Soft, subtle drop shadows are cast beneath each piece to ground them to the surface, providing a realistic sense of weight and three-dimensional presence. The overall mood is sophisticated, technical, and luxurious, typical of premium "hero shots" in high-end jewelry e-commerce catalogs.`
+Styling & Mood: The background is pure #FFFFFF white, ensuring the product pair is the absolute focus. Soft, subtle drop shadows are cast beneath each piece to ground them to the surface, providing a realistic sense of weight and three-dimensional presence. The overall mood is sophisticated, technical, and luxurious, typical of premium "hero shots" in high-end jewelry e-commerce catalogs.`
     },
     {
       id: 'oredobber2',
@@ -171,9 +171,9 @@ Styling & Mood: The background is a seamless, minimalist pure white, providing a
       id: 'anheng1',
       name: 'V-Shape Chain Drape',
       imageFile: 'anheng1.png',
-      prompt: `Placement: The jewelry is arranged in a perfectly symmetrical "V-shape" drape, captured from a direct frontal perspective. The gold chain enters the frame from the upper corners and converges at a central focal point at the bottom-center of the frame. The primary pendant or focal component is suspended vertically, ensuring its face is oriented directly toward the viewer to showcase structural details and material quality.
+      prompt: `Placement: The jewelry is arranged hanging in a perfectly symmetrical "V-shape" drape, captured from a direct frontal perspective. The gold chain enters the frame from the upper corners and converges at a central focal point at the bottom-center of the frame. The primary pendant or focal component is suspended vertically, ensuring its face is oriented directly toward the viewer to showcase structural details and material quality.
 Lighting: The scene features professional high-key studio lighting with even, multi-directional diffusion. The setup is designed to create sharp, clean highlights along the edges of the metallic components while providing bright, uniform illumination for any central focal elements. If translucent materials are present, the lighting is balanced to reveal internal clarity and facet structure without creating harsh surface glares.
-Styling & Mood: The background is a seamless, minimalist pure white, providing a high-contrast environment that isolates the piece as the sole focus. A very subtle, soft-edged drop shadow is visible directly beneath the pendant and chain, grounding the object to the surface for a realistic sense of weight. The overall aesthetic is clinical, luxurious, and technically precise, typical of high-end e-commerce "hero shots".`
+Styling & Mood: The background is pure #FFFFFF white, seamless, providing a high-contrast environment that isolates the piece as the sole focus. A very subtle, soft-edged drop shadow is visible directly beneath the pendant and chain, grounding the object to the surface for a realistic sense of weight. The overall aesthetic is clinical, luxurious, and technically precise, typical of high-end e-commerce "hero shots".`
     },
     {
       id: 'anheng2',
