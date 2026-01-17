@@ -1,10 +1,12 @@
 const { VertexAI } = require('@google-cloud/vertexai');
+const { GoogleGenAI } = require('@google/genai');
 const path = require('path');
 const fs = require('fs');
 const { buildFullPrompt, PROMPTS } = require('../config/prompts');
 
 const PROJECT_ID = process.env.GOOGLE_PROJECT_ID || 'project-bcb47e5a-1886-41ee-a91';
 const LOCATION = 'us-central1';
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 
 // Setup credentials for Vertex AI
 function setupCredentials() {
@@ -55,28 +57,46 @@ async function processQueue() {
   }
 }
 
-// Initialize Vertex AI for Nano Banana Pro
+// Initialize AI for Image Generation
 let vertexAI = null;
-let nanoBananaProModel = null;
+let genAI = null;
+let imageGenModel = null;
 
 function initializeNanoBananaPro() {
-  if (!vertexAI) {
-    setupCredentials();
-    vertexAI = new VertexAI({
-      project: PROJECT_ID,
-      location: LOCATION
-    });
+  if (!imageGenModel) {
+    // Prefer API key for gemini-3-pro-image-preview
+    if (GEMINI_API_KEY) {
+      console.log('Initializing gemini-3-pro-image-preview with API key');
+      genAI = new GoogleGenAI({
+        apiKey: GEMINI_API_KEY
+      });
 
-    // UPDATED: Nano Banana Pro = gemini-3-pro-image-preview
-    // This is the correct model for high-fidelity photorealistic generation
-    nanoBananaProModel = vertexAI.getGenerativeModel({
-      model: 'gemini-3-pro-image-preview',
-      generationConfig: {
-        responseModalities: ['image'],
-      }
-    });
+      imageGenModel = genAI.models.get({
+        model: 'gemini-3-pro-image-preview',
+        generationConfig: {
+          responseModalities: ['image'],
+        }
+      });
+    } else {
+      // Fallback to Vertex AI with service account
+      console.log('Initializing gemini-3-pro-image-preview with Vertex AI (service account)');
+      setupCredentials();
+      vertexAI = new VertexAI({
+        project: PROJECT_ID,
+        location: LOCATION
+      });
+
+      // UPDATED: Nano Banana Pro = gemini-3-pro-image-preview
+      // This is the correct model for high-fidelity photorealistic generation
+      imageGenModel = vertexAI.getGenerativeModel({
+        model: 'gemini-3-pro-image-preview',
+        generationConfig: {
+          responseModalities: ['image'],
+        }
+      });
+    }
   }
-  return nanoBananaProModel;
+  return imageGenModel;
 }
 
 // Generate a single image with Nano Banana Pro
