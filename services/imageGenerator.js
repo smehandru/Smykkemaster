@@ -344,7 +344,7 @@ async function regenerateImage(visualDescriptor, category, ethnicity, perspectiv
 // Composition guidance is provided through text instructions only
 async function generateSingleImageWithComposition(prompt, productImageBuffers, compositionImageBuffer = null) {
   return enqueueRequest(async () => {
-    const model = initializeNanoBananaPro();
+    const { genAI: apiClient, vertexAI: vertexClient, useApiKey: isUsingApiKey } = initializeNanoBananaPro();
 
     const parts = [];
     const numProductImages = productImageBuffers ? productImageBuffers.length : 0;
@@ -374,25 +374,74 @@ async function generateSingleImageWithComposition(prompt, productImageBuffers, c
     parts.push({ text: instructionText });
 
     try {
-      const request = {
-        contents: [{ role: 'user', parts }],
-        generationConfig: {
-          responseModalities: ['image'],
-          candidateCount: 1,
-        },
-        safetySettings: [
-          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
-          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
-          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
-          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
-        ]
-      };
-
       console.log('Sending request to Nano Banana Pro (composition via text only)...');
+      console.log('Using API Key:', isUsingApiKey);
       const startTime = Date.now();
 
-      const response = await model.generateContent(request);
-      const result = response.response;
+      let response;
+      if (isUsingApiKey) {
+        // API Key approach (GoogleGenAI)
+        response = await apiClient.models.generateContent({
+          model: 'gemini-3-pro-image-preview',
+          contents: parts,
+          generationConfig: {
+            responseModalities: ['image'],
+            candidateCount: 1,
+          },
+          safetySettings: [
+            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
+            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
+            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
+            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
+          ]
+        });
+      } else {
+        // Vertex AI approach (service account)
+        let modelName = 'gemini-3-pro-image-preview';
+        let model;
+
+        try {
+          model = vertexClient.getGenerativeModel({
+            model: modelName,
+            generationConfig: {
+              responseModalities: ['image'],
+            }
+          });
+        } catch (modelError) {
+          console.warn(`Failed to get ${modelName}, falling back to gemini-2.0-flash-exp:`, modelError.message);
+          modelName = 'gemini-2.0-flash-exp';
+          model = vertexClient.getGenerativeModel({
+            model: modelName,
+            generationConfig: {
+              responseModalities: ['image'],
+            }
+          });
+        }
+
+        // Safety check
+        if (!model || typeof model.generateContent !== 'function') {
+          throw new Error(`Model object is invalid. model: ${!!model}, generateContent type: ${typeof model?.generateContent}`);
+        }
+
+        const request = {
+          contents: [{ role: 'user', parts }],
+          generationConfig: {
+            responseModalities: ['image'],
+            candidateCount: 1,
+          },
+          safetySettings: [
+            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
+            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
+            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
+            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
+          ]
+        };
+
+        response = await model.generateContent(request);
+      }
+
+      // Handle response based on API type
+      const result = isUsingApiKey ? response : response.response;
 
       const duration = ((Date.now() - startTime) / 1000).toFixed(1);
       console.log(`Image generated in ${duration}s`);
