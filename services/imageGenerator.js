@@ -114,11 +114,15 @@ async function generateSingleImage(prompt, referenceImageBuffers, retries = RATE
 
     try {
       console.log('Sending request to Nano Banana Pro...');
+      console.log('Using API Key:', isUsingApiKey);
+      console.log('apiClient:', !!apiClient);
+      console.log('vertexClient:', !!vertexClient);
       const startTime = Date.now();
 
       let response;
       if (isUsingApiKey) {
         // API Key approach (GoogleGenAI)
+        console.log('Calling apiClient.models.generateContent...');
         response = await apiClient.models.generateContent({
           model: 'gemini-3-pro-image-preview',
           contents: parts,
@@ -135,12 +139,19 @@ async function generateSingleImage(prompt, referenceImageBuffers, retries = RATE
         });
       } else {
         // Vertex AI approach (service account)
+        console.log('Getting model from vertexClient...');
+        console.log('vertexClient type:', typeof vertexClient);
+        console.log('vertexClient.getGenerativeModel:', typeof vertexClient?.getGenerativeModel);
+
         const model = vertexClient.getGenerativeModel({
           model: 'gemini-3-pro-image-preview',
           generationConfig: {
             responseModalities: ['image'],
           }
         });
+
+        console.log('Model obtained:', !!model);
+        console.log('model.generateContent:', typeof model?.generateContent);
 
         const request = {
           contents: [{ role: 'user', parts }],
@@ -156,6 +167,7 @@ async function generateSingleImage(prompt, referenceImageBuffers, retries = RATE
           ]
         };
 
+        console.log('Calling model.generateContent...');
         response = await model.generateContent(request);
       }
 
