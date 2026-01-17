@@ -139,19 +139,34 @@ async function generateSingleImage(prompt, referenceImageBuffers, retries = RATE
         });
       } else {
         // Vertex AI approach (service account)
+        // NOTE: gemini-3-pro-image-preview might not be available via Vertex AI yet
+        // Try it first, fallback to gemini-2.0-flash-exp if it fails
         console.log('Getting model from vertexClient...');
         console.log('vertexClient type:', typeof vertexClient);
         console.log('vertexClient.getGenerativeModel:', typeof vertexClient?.getGenerativeModel);
 
-        const model = vertexClient.getGenerativeModel({
-          model: 'gemini-3-pro-image-preview',
-          generationConfig: {
-            responseModalities: ['image'],
-          }
-        });
+        let modelName = 'gemini-3-pro-image-preview';
+        let model;
 
-        console.log('Model obtained:', !!model);
-        console.log('model.generateContent:', typeof model?.generateContent);
+        try {
+          model = vertexClient.getGenerativeModel({
+            model: modelName,
+            generationConfig: {
+              responseModalities: ['image'],
+            }
+          });
+          console.log('Model obtained:', !!model);
+          console.log('model.generateContent:', typeof model?.generateContent);
+        } catch (modelError) {
+          console.warn(`Failed to get ${modelName}, falling back to gemini-2.0-flash-exp:`, modelError.message);
+          modelName = 'gemini-2.0-flash-exp';
+          model = vertexClient.getGenerativeModel({
+            model: modelName,
+            generationConfig: {
+              responseModalities: ['image'],
+            }
+          });
+        }
 
         const request = {
           contents: [{ role: 'user', parts }],
@@ -167,7 +182,13 @@ async function generateSingleImage(prompt, referenceImageBuffers, retries = RATE
           ]
         };
 
-        console.log('Calling model.generateContent...');
+        console.log(`Calling model.generateContent on ${modelName}...`);
+
+        // Safety check
+        if (!model || typeof model.generateContent !== 'function') {
+          throw new Error(`Model object is invalid. model: ${!!model}, generateContent type: ${typeof model?.generateContent}`);
+        }
+
         response = await model.generateContent(request);
       }
 
