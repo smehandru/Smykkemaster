@@ -60,23 +60,17 @@ async function processQueue() {
 // Initialize AI for Image Generation
 let vertexAI = null;
 let genAI = null;
-let imageGenModel = null;
+let useApiKey = false;
 
 function initializeNanoBananaPro() {
-  if (!imageGenModel) {
+  if (!genAI && !vertexAI) {
     // Prefer API key for gemini-3-pro-image-preview
     if (GEMINI_API_KEY) {
       console.log('Initializing gemini-3-pro-image-preview with API key');
       genAI = new GoogleGenAI({
         apiKey: GEMINI_API_KEY
       });
-
-      imageGenModel = genAI.models.get({
-        model: 'gemini-3-pro-image-preview',
-        generationConfig: {
-          responseModalities: ['image'],
-        }
-      });
+      useApiKey = true;
     } else {
       // Fallback to Vertex AI with service account
       console.log('Initializing gemini-3-pro-image-preview with Vertex AI (service account)');
@@ -85,24 +79,16 @@ function initializeNanoBananaPro() {
         project: PROJECT_ID,
         location: LOCATION
       });
-
-      // UPDATED: Nano Banana Pro = gemini-3-pro-image-preview
-      // This is the correct model for high-fidelity photorealistic generation
-      imageGenModel = vertexAI.getGenerativeModel({
-        model: 'gemini-3-pro-image-preview',
-        generationConfig: {
-          responseModalities: ['image'],
-        }
-      });
+      useApiKey = false;
     }
   }
-  return imageGenModel;
+  return { genAI, vertexAI, useApiKey };
 }
 
 // Generate a single image with Nano Banana Pro
 async function generateSingleImage(prompt, referenceImageBuffers, retries = RATE_LIMIT.maxRetries) {
   return enqueueRequest(async () => {
-    const model = initializeNanoBananaPro();
+    const { genAI: apiClient, vertexAI: vertexClient, useApiKey: isUsingApiKey } = initializeNanoBananaPro();
 
     const parts = [];
 
@@ -127,25 +113,54 @@ async function generateSingleImage(prompt, referenceImageBuffers, retries = RATE
     }
 
     try {
-      const request = {
-        contents: [{ role: 'user', parts }],
-        generationConfig: {
-          responseModalities: ['image'],
-          candidateCount: 1,
-        },
-        safetySettings: [
-          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
-          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
-          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
-          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
-        ]
-      };
-
       console.log('Sending request to Nano Banana Pro...');
       const startTime = Date.now();
 
-      const response = await model.generateContent(request);
-      const result = response.response;
+      let response;
+      if (isUsingApiKey) {
+        // API Key approach (GoogleGenAI)
+        response = await apiClient.models.generateContent({
+          model: 'gemini-3-pro-image-preview',
+          contents: parts,
+          generationConfig: {
+            responseModalities: ['image'],
+            candidateCount: 1,
+          },
+          safetySettings: [
+            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
+            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
+            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
+            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
+          ]
+        });
+      } else {
+        // Vertex AI approach (service account)
+        const model = vertexClient.getGenerativeModel({
+          model: 'gemini-3-pro-image-preview',
+          generationConfig: {
+            responseModalities: ['image'],
+          }
+        });
+
+        const request = {
+          contents: [{ role: 'user', parts }],
+          generationConfig: {
+            responseModalities: ['image'],
+            candidateCount: 1,
+          },
+          safetySettings: [
+            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
+            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
+            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
+            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
+          ]
+        };
+
+        response = await model.generateContent(request);
+      }
+
+      // Handle response based on API type
+      const result = isUsingApiKey ? response : response.response;
 
       const duration = ((Date.now() - startTime) / 1000).toFixed(1);
       console.log(`Image generated in ${duration}s`);
