@@ -67,11 +67,12 @@ function initializeNanoBananaPro() {
       location: LOCATION
     });
 
-    // Nano Banana Pro = gemini-2.0-flash-exp with image output
+    // UPDATED: Nano Banana Pro = gemini-3-pro-image-preview
+    // This is the correct model for high-fidelity photorealistic generation
     nanoBananaProModel = vertexAI.getGenerativeModel({
-      model: 'gemini-2.0-flash-exp',
+      model: 'gemini-3-pro-image-preview',
       generationConfig: {
-        responseModalities: ['image', 'text'],
+        responseModalities: ['image'],
       }
     });
   }
