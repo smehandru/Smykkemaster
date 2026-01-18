@@ -32,11 +32,12 @@ function setupCredentials() {
 }
 
 // Rate limiting configuration
+// More conservative settings to prevent 429 errors with Vertex AI
 const RATE_LIMIT = {
-  maxConcurrent: 2,
-  delayBetweenRequests: 3000,
+  maxConcurrent: 1,  // Reduced from 2 to 1 to avoid rate limits
+  delayBetweenRequests: 5000,  // Increased from 3000 to 5000ms (5 seconds between requests)
   maxRetries: 3,
-  retryDelay: 8000
+  retryDelay: 10000  // Increased from 8000 to 10000ms (10 seconds between retries)
 };
 
 let activeRequests = 0;
@@ -281,8 +282,11 @@ async function generateSingleImage(prompt, referenceImageBuffers, category = nul
         error.message.includes('503') ||
         error.message.includes('UNAVAILABLE')
       )) {
-        console.log(`Retrying in ${RATE_LIMIT.retryDelay / 1000}s...`);
-        await new Promise(resolve => setTimeout(resolve, RATE_LIMIT.retryDelay));
+        // Exponential backoff: increase delay with each retry attempt
+        const attemptNumber = RATE_LIMIT.maxRetries - retries;
+        const exponentialDelay = RATE_LIMIT.retryDelay * Math.pow(2, attemptNumber);
+        console.log(`Rate limit hit. Retrying in ${exponentialDelay / 1000}s... (attempt ${attemptNumber + 1}/${RATE_LIMIT.maxRetries})`);
+        await new Promise(resolve => setTimeout(resolve, exponentialDelay));
         return generateSingleImage(prompt, referenceImageBuffers, category, retries - 1);
       }
 
@@ -545,10 +549,12 @@ async function generateSingleImageWithComposition(prompt, productImageBuffers, c
     } catch (error) {
       console.error(`Image generation error:`, error.message);
 
-      // Retry on rate limits
+      // Retry on rate limits with exponential backoff
       if (error.message.includes('429') || error.message.includes('RESOURCE_EXHAUSTED')) {
-        console.log(`Retrying in ${RATE_LIMIT.retryDelay / 1000}s...`);
-        await new Promise(resolve => setTimeout(resolve, RATE_LIMIT.retryDelay));
+        // Use exponential backoff for rate limit errors
+        const retryDelay = RATE_LIMIT.retryDelay * 2; // Double the delay for composition images
+        console.log(`Rate limit hit. Retrying in ${retryDelay / 1000}s...`);
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
         return generateSingleImageWithComposition(prompt, productImageBuffers, compositionImageBuffer, category);
       }
 
