@@ -8,14 +8,14 @@ const PROJECT_ID = process.env.GOOGLE_PROJECT_ID || 'project-bcb47e5a-1886-41ee-
 const LOCATION = 'us-central1';
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 
-// Categories that should use gemini-2.0-flash-exp instead of gemini-3-pro-image-preview
-// Note: gemini-2.0-flash-001 is text-only, gemini-2.0-flash-exp supports image generation
+// Categories that should use gemini-2.5-flash instead of gemini-3-pro-image-preview
+// Note: gemini-2.5-flash supports image generation and is more stable than gemini-2.0-flash-exp
 const FLASH_MODEL_CATEGORIES = ['ring', 'anheng', 'oredobber'];
 
 // Determine which model to use based on category
 function getModelForCategory(category) {
   if (FLASH_MODEL_CATEGORIES.includes(category)) {
-    return 'gemini-2.0-flash-exp';
+    return 'gemini-2.5-flash';
   }
   return 'gemini-3-pro-image-preview';
 }
@@ -97,7 +97,7 @@ function initializeClients() {
 
 function shouldUseApiKey(modelName) {
   // Only use API key for gemini-3-pro-image-preview if available
-  // All other models (including gemini-2.0-flash-exp) use Vertex AI
+  // All other models (including gemini-2.5-flash and gemini-2.0-flash-exp) use Vertex AI
   return modelName === 'gemini-3-pro-image-preview' && GEMINI_API_KEY && genAI;
 }
 
@@ -145,7 +145,7 @@ async function generateSingleImage(prompt, referenceImageBuffers, category = nul
       const startTime = Date.now();
 
       // Determine responseModalities based on model
-      const responseModalities = selectedModel === 'gemini-2.0-flash-exp'
+      const responseModalities = (selectedModel === 'gemini-2.5-flash' || selectedModel === 'gemini-2.0-flash-exp')
         ? ['image', 'text']
         : ['image'];
 
@@ -186,8 +186,8 @@ async function generateSingleImage(prompt, referenceImageBuffers, category = nul
           console.log('Model obtained:', !!model);
           console.log('model.generateContent:', typeof model?.generateContent);
         } catch (modelError) {
-          console.warn(`Failed to get ${modelName}, falling back to gemini-2.0-flash-exp:`, modelError.message);
-          modelName = 'gemini-2.0-flash-exp';
+          console.warn(`Failed to get ${modelName}, falling back to gemini-2.5-flash:`, modelError.message);
+          modelName = 'gemini-2.5-flash';
           model = vertexClient.getGenerativeModel({
             model: modelName,
             generationConfig: {
@@ -434,7 +434,7 @@ async function generateSingleImageWithComposition(prompt, productImageBuffers, c
       const startTime = Date.now();
 
       // Determine responseModalities based on model
-      const responseModalities = selectedModel === 'gemini-2.0-flash-exp'
+      const responseModalities = (selectedModel === 'gemini-2.5-flash' || selectedModel === 'gemini-2.0-flash-exp')
         ? ['image', 'text']
         : ['image'];
 
@@ -468,8 +468,8 @@ async function generateSingleImageWithComposition(prompt, productImageBuffers, c
             }
           });
         } catch (modelError) {
-          console.warn(`Failed to get ${modelName}, falling back to gemini-2.0-flash-exp:`, modelError.message);
-          modelName = 'gemini-2.0-flash-exp';
+          console.warn(`Failed to get ${modelName}, falling back to gemini-2.5-flash:`, modelError.message);
+          modelName = 'gemini-2.5-flash';
           model = vertexClient.getGenerativeModel({
             model: modelName,
             generationConfig: {
