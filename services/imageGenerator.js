@@ -96,9 +96,10 @@ function initializeClients() {
 }
 
 function shouldUseApiKey(modelName) {
-  // Only use API key for gemini-3-pro-image-preview if available
-  // All other models (including gemini-2.0-flash-exp) use Vertex AI
-  return modelName === 'gemini-3-pro-image-preview' && GEMINI_API_KEY && genAI;
+  // Use API key for gemini-3-pro-image-preview and gemini-2.5-flash-image if available
+  // All other models use Vertex AI
+  const apiKeyModels = ['gemini-3-pro-image-preview', 'gemini-2.5-flash-image'];
+  return apiKeyModels.includes(modelName) && GEMINI_API_KEY && genAI;
 }
 
 // Generate a single image with Nano Banana Pro
@@ -388,7 +389,7 @@ async function regenerateImage(visualDescriptor, category, ethnicity, perspectiv
 
 // Generate a single image with product images and composition prompt (text only, no composition image)
 // Composition guidance is provided through text instructions only
-async function generateSingleImageWithComposition(prompt, productImageBuffers, compositionImageBuffer = null, category = null) {
+async function generateSingleImageWithComposition(prompt, productImageBuffers, compositionImageBuffer = null, category = null, retries = RATE_LIMIT.maxRetries) {
   return enqueueRequest(async () => {
     // Determine which model to use based on category
     const selectedModel = category ? getModelForCategory(category) : 'gemini-3-pro-image-preview';
@@ -543,13 +544,21 @@ async function generateSingleImageWithComposition(prompt, productImageBuffers, c
       console.error('No image data found in response. Full result:', JSON.stringify(result, null, 2));
       throw new Error('No image data in response');
     } catch (error) {
-      console.error(`Image generation error:`, error.message);
+      console.error(`Image generation error (retries left: ${retries}):`, error.message);
 
-      // Retry on rate limits
-      if (error.message.includes('429') || error.message.includes('RESOURCE_EXHAUSTED')) {
-        console.log(`Retrying in ${RATE_LIMIT.retryDelay / 1000}s...`);
-        await new Promise(resolve => setTimeout(resolve, RATE_LIMIT.retryDelay));
-        return generateSingleImageWithComposition(prompt, productImageBuffers, compositionImageBuffer, category);
+      // Retry on rate limits or transient errors with exponential backoff
+      if (retries > 0 && (
+        error.message.includes('429') ||
+        error.message.includes('RESOURCE_EXHAUSTED') ||
+        error.message.includes('503') ||
+        error.message.includes('UNAVAILABLE')
+      )) {
+        // Exponential backoff: increase delay with each retry attempt
+        const attemptNumber = RATE_LIMIT.maxRetries - retries;
+        const exponentialDelay = RATE_LIMIT.retryDelay * Math.pow(2, attemptNumber);
+        console.log(`Rate limit hit. Retrying in ${exponentialDelay / 1000}s... (attempt ${attemptNumber + 1}/${RATE_LIMIT.maxRetries})`);
+        await new Promise(resolve => setTimeout(resolve, exponentialDelay));
+        return generateSingleImageWithComposition(prompt, productImageBuffers, compositionImageBuffer, category, retries - 1);
       }
 
       throw error;

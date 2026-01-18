@@ -1810,30 +1810,104 @@
       console.log('  effectivePerspectives:', effectivePerspectives);
 
       try {
-        const res = await fetch(`/api/generate/${currentSession.id}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ customPrompts: filteredPrompts, selectedPerspectives: effectivePerspectives })
+        currentSession.status = 'generating';
+        saveSessionToStorage();
+
+        // Show gallery with skeletons first
+        // Fetch perspectives to show skeletons
+        const perspRes = await fetch(`/api/perspectives/${currentSession.category}`);
+        const perspData = await perspRes.json();
+        showGallerySkeletons(perspData.perspectives.filter(p => effectivePerspectives.includes(p.id)));
+
+        // Use Server-Sent Events for streaming
+        const params = new URLSearchParams({
+          customPrompts: JSON.stringify(filteredPrompts),
+          selectedPerspectives: JSON.stringify(effectivePerspectives)
         });
 
-        const data = await res.json();
+        const eventSource = new EventSource(`/api/generate-stream/${currentSession.id}?${params}`);
 
-        if (data.success) {
-          currentSession.status = 'generating';
+        eventSource.addEventListener('start', (e) => {
+          const data = JSON.parse(e.data);
+          console.log('Generation started:', data.message);
+        });
+
+        eventSource.addEventListener('progress', (e) => {
+          const data = JSON.parse(e.data);
+          text.textContent = data.message;
+          showStatus(data.message, 'info', true);
+        });
+
+        eventSource.addEventListener('image-start', (e) => {
+          const data = JSON.parse(e.data);
+          text.textContent = `${data.imageNumber}/${data.total}: ${data.perspectiveId}...`;
+          showStatus(data.message, 'info', true);
+        });
+
+        eventSource.addEventListener('image-complete', (e) => {
+          const data = JSON.parse(e.data);
+          console.log(`Image ${data.imageNumber} complete:`, data.perspectiveId);
+
+          // Update gallery with this image immediately!
+          updateSingleImageInGallery({
+            perspectiveId: data.perspectiveId,
+            perspectiveName: data.perspectiveName,
+            imageNumber: data.imageNumber,
+            success: data.success,
+            imageBase64: data.imageBase64,
+            error: data.error
+          });
+
+          text.textContent = `Generert ${data.progress}%`;
+        });
+
+        eventSource.addEventListener('image-error', (e) => {
+          const data = JSON.parse(e.data);
+          console.error(`Image ${data.imageNumber} error:`, data.error);
+
+          // Show error for this image
+          updateSingleImageInGallery({
+            perspectiveId: data.perspectiveId,
+            imageNumber: data.imageNumber,
+            success: false,
+            error: data.error
+          });
+        });
+
+        eventSource.addEventListener('complete', (e) => {
+          const data = JSON.parse(e.data);
+          console.log('All images complete:', data);
+          eventSource.close();
+
+          currentSession.status = 'generated';
           saveSessionToStorage();
 
-          // Show gallery with skeletons
-          showGallerySkeletons(data.perspectives);
+          showStatus(`Alle bilder generert! ${data.successCount}/${data.totalImages} vellykkede`, 'success', false);
 
-          // Start polling for results
-          startPolling('generation');
-        } else {
-          showStatus(data.error || 'Generering feilet', 'error', false);
           // Reset button
-          btn.classList.remove('loading');
-          spinner.classList.add('hidden');
-          text.textContent = 'Generer bilder';
-        }
+          resetGenerateButton();
+
+          // Show save section
+          document.getElementById('saveSection').classList.remove('hidden');
+        });
+
+        eventSource.addEventListener('error', (e) => {
+          console.error('EventSource error:', e);
+          if (e.data) {
+            const data = JSON.parse(e.data);
+            showStatus('Generering feilet: ' + data.message, 'error', false);
+          }
+          eventSource.close();
+          resetGenerateButton();
+        });
+
+        eventSource.onerror = (err) => {
+          console.error('Connection error:', err);
+          eventSource.close();
+          showStatus('Tilkobling til server mistet', 'error', false);
+          resetGenerateButton();
+        };
+
       } catch (error) {
         showStatus('Generering feilet: ' + error.message, 'error', false);
         // Reset button
@@ -1923,6 +1997,42 @@
         }
       } catch (error) {
         console.error('Fetch generated images error:', error);
+      }
+    }
+
+    function updateSingleImageInGallery(img) {
+      const grid = document.getElementById('galleryGrid');
+      const existingItem = grid.querySelector(`[data-perspective="${img.perspectiveId}"]`);
+
+      if (!existingItem) {
+        console.warn(`Gallery item not found for ${img.perspectiveId}`);
+        return;
+      }
+
+      // Replace the skeleton/loading with the actual image or error
+      if (img.success && img.imageBase64) {
+        existingItem.innerHTML = `
+          <div class="image-container" onclick="openModal('data:image/jpeg;base64,${img.imageBase64}')">
+            <img src="data:image/jpeg;base64,${img.imageBase64}" alt="${img.perspectiveName}">
+            <span class="image-number">${img.imageNumber}</span>
+            <button class="regenerate-btn" id="regen_${img.perspectiveId}" onclick="event.stopPropagation(); regenerateImage('${img.perspectiveId}')">↻</button>
+          </div>
+          <div class="info">
+            <h4>${img.perspectiveName}</h4>
+            <p>Bilde ${img.imageNumber}</p>
+          </div>
+        `;
+      } else if (img.error) {
+        existingItem.innerHTML = `
+          <div class="image-container" style="background: var(--bg-dark); display: flex; align-items: center; justify-content: center;">
+            <span class="image-number">${img.imageNumber}</span>
+            <p style="color: var(--error); padding: 1rem; text-align: center;">Feil: ${img.error}</p>
+          </div>
+          <div class="info">
+            <h4>${img.perspectiveName}</h4>
+            <button class="btn btn-outline" style="margin-top: 0.5rem;" onclick="regenerateImage('${img.perspectiveId}')">Prøv igjen</button>
+          </div>
+        `;
       }
     }
 
