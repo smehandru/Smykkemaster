@@ -255,6 +255,64 @@ app.put('/api/analysis/:sessionId', requireAuth, (req, res) => {
 // IMAGE GENERATION ROUTES
 // =============================================================================
 
+// Stream generation progress with Server-Sent Events
+app.get('/api/generate-stream/:sessionId', requireAuth, async (req, res) => {
+  const session = activeSessions.get(req.params.sessionId);
+  if (!session) {
+    return res.status(404).json({ error: 'Session not found' });
+  }
+
+  if (session.status !== 'analyzed' && session.status !== 'generated') {
+    return res.status(400).json({ error: 'Analysis not complete' });
+  }
+
+  // Set up Server-Sent Events
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  const sendEvent = (event, data) => {
+    res.write(`event: ${event}\n`);
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
+  };
+
+  try {
+    // Store custom prompts and selected perspectives from query params
+    const customPromptsJson = req.query.customPrompts;
+    const selectedPerspectivesJson = req.query.selectedPerspectives;
+
+    const customPrompts = customPromptsJson ? JSON.parse(customPromptsJson) : {};
+    const selectedPerspectives = selectedPerspectivesJson ? JSON.parse(selectedPerspectivesJson) : [];
+
+    if (customPrompts && Object.keys(customPrompts).length > 0) {
+      session.masterPrompts = customPrompts;
+    }
+
+    session.selectedPerspectives = selectedPerspectives;
+    session.customPrompts = customPrompts;
+    session.status = 'generating';
+    session.generatedImages = [];
+
+    sendEvent('start', { message: 'Starting image generation...' });
+
+    // Generate images with progressive callbacks
+    await generateImagesStreaming(session, sendEvent);
+
+    sendEvent('complete', {
+      message: 'All images generated',
+      totalImages: session.generatedImages.length,
+      successCount: session.generatedImages.filter(i => i.success).length
+    });
+
+    res.end();
+  } catch (error) {
+    console.error('Streaming generation error:', error);
+    sendEvent('error', { message: error.message });
+    res.end();
+  }
+});
+
 app.post('/api/generate/:sessionId', requireAuth, async (req, res) => {
   const session = activeSessions.get(req.params.sessionId);
   if (!session) {
@@ -304,6 +362,141 @@ app.post('/api/generate/:sessionId', requireAuth, async (req, res) => {
     session.error = err.message;
   });
 });
+
+// Streaming generation function - sends images as they're completed
+async function generateImagesStreaming(session, sendEvent) {
+  try {
+    const referenceBuffers = session.rawImages.map(img => img.buffer);
+    console.log(`Starting STREAMING image generation for session ${session.id}`);
+
+    // Load composition perspectives for this category
+    const { getPerspectivesForCategory } = require('./config/compositionPrompts');
+    const allPerspectives = getPerspectivesForCategory(session.category);
+
+    if (!allPerspectives || allPerspectives.length === 0) {
+      throw new Error(`No composition perspectives found for category: ${session.category}`);
+    }
+
+    // Filter to only selected perspectives if specified
+    let perspectives = allPerspectives;
+    if (session.selectedPerspectives && session.selectedPerspectives.length > 0) {
+      perspectives = allPerspectives.filter(p => session.selectedPerspectives.includes(p.id));
+      console.log(`Filtered to ${perspectives.length} selected perspectives`);
+    }
+
+    if (perspectives.length === 0) {
+      throw new Error('No perspectives to generate (selection is empty)');
+    }
+
+    const visualDescriptor = session.visualDescriptor || 'A beautiful 22 karat gold jewelry piece';
+
+    sendEvent('progress', {
+      phase: 'master-prompts',
+      message: `Generating ${perspectives.length} master prompts...`,
+      total: perspectives.length
+    });
+
+    // STEP 1: Generate master prompts using Gemini 3 Pro (parallel)
+    const promptPromises = perspectives.map(async (p) => {
+      const masterPrompt = await gemini.generateMasterPrompt(
+        visualDescriptor,
+        p.prompt,
+        session.category,
+        referenceBuffers,
+        null
+      );
+      return { id: p.id, prompt: masterPrompt, name: p.name };
+    });
+
+    const masterPromptResults = await Promise.all(promptPromises);
+
+    const masterPrompts = {};
+    masterPromptResults.forEach(r => {
+      masterPrompts[r.id] = r.prompt;
+    });
+
+    session.masterPrompts = masterPrompts;
+
+    sendEvent('progress', {
+      phase: 'images',
+      message: 'Master prompts complete. Starting image generation...',
+      total: perspectives.length
+    });
+
+    // STEP 2: Generate images ONE AT A TIME and stream each result
+    const perspectiveIds = Object.keys(masterPrompts);
+    for (let i = 0; i < perspectiveIds.length; i++) {
+      const perspectiveId = perspectiveIds[i];
+      const masterPrompt = masterPrompts[perspectiveId];
+
+      sendEvent('image-start', {
+        perspectiveId,
+        imageNumber: i + 1,
+        total: perspectiveIds.length,
+        message: `Generating image ${i + 1}/${perspectiveIds.length}: ${perspectiveId}...`
+      });
+
+      try {
+        const result = await imageGenerator.regenerateSingleImage(
+          masterPrompt,
+          referenceBuffers,
+          null,
+          session.category
+        );
+
+        const imageData = {
+          perspectiveId,
+          perspectiveName: perspectiveId,
+          imageNumber: i + 1,
+          success: result.success,
+          imageBase64: result.success ? result.imageBuffer.toString('base64') : null,
+          imageBuffer: result.success ? result.imageBuffer : null,
+          error: result.error
+        };
+
+        session.generatedImages.push(imageData);
+
+        // Send image immediately to client
+        sendEvent('image-complete', {
+          perspectiveId,
+          perspectiveName: perspectiveId,
+          imageNumber: i + 1,
+          success: result.success,
+          imageBase64: result.success ? result.imageBuffer.toString('base64') : null,
+          error: result.error,
+          progress: Math.round(((i + 1) / perspectiveIds.length) * 100)
+        });
+
+      } catch (error) {
+        console.error(`Failed to generate ${perspectiveId}:`, error.message);
+
+        const errorData = {
+          perspectiveId,
+          perspectiveName: perspectiveId,
+          imageNumber: i + 1,
+          success: false,
+          error: error.message
+        };
+
+        session.generatedImages.push(errorData);
+
+        sendEvent('image-error', {
+          perspectiveId,
+          imageNumber: i + 1,
+          error: error.message
+        });
+      }
+    }
+
+    session.status = 'generated';
+    console.log(`Streaming generation complete for session ${session.id}`);
+  } catch (error) {
+    console.error('Streaming generation failed:', error);
+    session.status = 'error';
+    session.error = error.message;
+    throw error;
+  }
+}
 
 // Background generation function - TWO-STEP WORKFLOW:
 // Step 1: Gemini 3 Pro creates master rendering prompts
