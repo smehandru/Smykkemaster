@@ -8,13 +8,14 @@ const PROJECT_ID = process.env.GOOGLE_PROJECT_ID || 'project-bcb47e5a-1886-41ee-
 const LOCATION = 'us-central1';
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 
-// Categories that should use gemini-2.0-flash-001 instead of gemini-3-pro-image-preview
+// Categories that should use gemini-2.0-flash-exp instead of gemini-3-pro-image-preview
+// Note: gemini-2.0-flash-001 is text-only, gemini-2.0-flash-exp supports image generation
 const FLASH_MODEL_CATEGORIES = ['ring', 'anheng', 'oredobber'];
 
 // Determine which model to use based on category
 function getModelForCategory(category) {
   if (FLASH_MODEL_CATEGORIES.includes(category)) {
-    return 'gemini-2.0-flash-001';
+    return 'gemini-2.0-flash-exp';
   }
   return 'gemini-3-pro-image-preview';
 }
