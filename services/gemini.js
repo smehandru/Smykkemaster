@@ -35,8 +35,8 @@ function initializeGenAI() {
 // Fast model name for quick tasks
 const FAST_MODEL = 'gemini-2.0-flash-001';
 
-// Thinking model with HIGH reasoning for complex tasks
-const THINKING_MODEL = 'gemini-3-pro-preview';
+// Thinking model with HIGH reasoning for complex tasks (changed to gemini-2.0-flash-001)
+const THINKING_MODEL = 'gemini-2.0-flash-001';
 
 // Extract tag information from jewelry images (uses fast model)
 async function extractTagInfo(imageBuffers) {

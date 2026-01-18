@@ -8,6 +8,17 @@ const PROJECT_ID = process.env.GOOGLE_PROJECT_ID || 'project-bcb47e5a-1886-41ee-
 const LOCATION = 'us-central1';
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 
+// Categories that should use gemini-2.0-flash-001 instead of gemini-3-pro-image-preview
+const FLASH_MODEL_CATEGORIES = ['ring', 'anheng', 'oredobber'];
+
+// Determine which model to use based on category
+function getModelForCategory(category) {
+  if (FLASH_MODEL_CATEGORIES.includes(category)) {
+    return 'gemini-2.0-flash-001';
+  }
+  return 'gemini-3-pro-image-preview';
+}
+
 // Setup credentials for Vertex AI
 function setupCredentials() {
   if (process.env.GOOGLE_CREDENTIALS) {
@@ -86,9 +97,12 @@ function initializeNanoBananaPro() {
 }
 
 // Generate a single image with Nano Banana Pro
-async function generateSingleImage(prompt, referenceImageBuffers, retries = RATE_LIMIT.maxRetries) {
+async function generateSingleImage(prompt, referenceImageBuffers, category = null, retries = RATE_LIMIT.maxRetries) {
   return enqueueRequest(async () => {
     const { genAI: apiClient, vertexAI: vertexClient, useApiKey: isUsingApiKey } = initializeNanoBananaPro();
+
+    // Determine which model to use based on category
+    const selectedModel = category ? getModelForCategory(category) : 'gemini-3-pro-image-preview';
 
     const parts = [];
 
@@ -113,7 +127,9 @@ async function generateSingleImage(prompt, referenceImageBuffers, retries = RATE
     }
 
     try {
-      console.log('Sending request to Nano Banana Pro...');
+      console.log('Sending request to image generation model...');
+      console.log('Category:', category);
+      console.log('Selected model:', selectedModel);
       console.log('Using API Key:', isUsingApiKey);
       console.log('apiClient:', !!apiClient);
       console.log('vertexClient:', !!vertexClient);
@@ -124,7 +140,7 @@ async function generateSingleImage(prompt, referenceImageBuffers, retries = RATE
         // API Key approach (GoogleGenAI)
         console.log('Calling apiClient.models.generateContent...');
         response = await apiClient.models.generateContent({
-          model: 'gemini-3-pro-image-preview',
+          model: selectedModel,
           contents: parts,
           generationConfig: {
             responseModalities: ['image'],
@@ -139,13 +155,11 @@ async function generateSingleImage(prompt, referenceImageBuffers, retries = RATE
         });
       } else {
         // Vertex AI approach (service account)
-        // NOTE: gemini-3-pro-image-preview might not be available via Vertex AI yet
-        // Try it first, fallback to gemini-2.0-flash-exp if it fails
         console.log('Getting model from vertexClient...');
         console.log('vertexClient type:', typeof vertexClient);
         console.log('vertexClient.getGenerativeModel:', typeof vertexClient?.getGenerativeModel);
 
-        let modelName = 'gemini-3-pro-image-preview';
+        let modelName = selectedModel;
         let model;
 
         try {
@@ -237,7 +251,7 @@ async function generateSingleImage(prompt, referenceImageBuffers, retries = RATE
       )) {
         console.log(`Retrying in ${RATE_LIMIT.retryDelay / 1000}s...`);
         await new Promise(resolve => setTimeout(resolve, RATE_LIMIT.retryDelay));
-        return generateSingleImage(prompt, referenceImageBuffer, retries - 1);
+        return generateSingleImage(prompt, referenceImageBuffers, category, retries - 1);
       }
 
       throw error;
@@ -342,9 +356,12 @@ async function regenerateImage(visualDescriptor, category, ethnicity, perspectiv
 
 // Generate a single image with product images and composition prompt (text only, no composition image)
 // Composition guidance is provided through text instructions only
-async function generateSingleImageWithComposition(prompt, productImageBuffers, compositionImageBuffer = null) {
+async function generateSingleImageWithComposition(prompt, productImageBuffers, compositionImageBuffer = null, category = null) {
   return enqueueRequest(async () => {
     const { genAI: apiClient, vertexAI: vertexClient, useApiKey: isUsingApiKey } = initializeNanoBananaPro();
+
+    // Determine which model to use based on category
+    const selectedModel = category ? getModelForCategory(category) : 'gemini-3-pro-image-preview';
 
     const parts = [];
     const numProductImages = productImageBuffers ? productImageBuffers.length : 0;
@@ -374,7 +391,9 @@ async function generateSingleImageWithComposition(prompt, productImageBuffers, c
     parts.push({ text: instructionText });
 
     try {
-      console.log('Sending request to Nano Banana Pro (composition via text only)...');
+      console.log('Sending request to image generation model (composition via text only)...');
+      console.log('Category:', category);
+      console.log('Selected model:', selectedModel);
       console.log('Using API Key:', isUsingApiKey);
       const startTime = Date.now();
 
@@ -382,7 +401,7 @@ async function generateSingleImageWithComposition(prompt, productImageBuffers, c
       if (isUsingApiKey) {
         // API Key approach (GoogleGenAI)
         response = await apiClient.models.generateContent({
-          model: 'gemini-3-pro-image-preview',
+          model: selectedModel,
           contents: parts,
           generationConfig: {
             responseModalities: ['image'],
@@ -397,7 +416,7 @@ async function generateSingleImageWithComposition(prompt, productImageBuffers, c
         });
       } else {
         // Vertex AI approach (service account)
-        let modelName = 'gemini-3-pro-image-preview';
+        let modelName = selectedModel;
         let model;
 
         try {
@@ -471,7 +490,7 @@ async function generateSingleImageWithComposition(prompt, productImageBuffers, c
       if (error.message.includes('429') || error.message.includes('RESOURCE_EXHAUSTED')) {
         console.log(`Retrying in ${RATE_LIMIT.retryDelay / 1000}s...`);
         await new Promise(resolve => setTimeout(resolve, RATE_LIMIT.retryDelay));
-        return generateSingleImageWithComposition(prompt, productImageBuffers, compositionImageBuffer);
+        return generateSingleImageWithComposition(prompt, productImageBuffers, compositionImageBuffer, category);
       }
 
       throw error;
@@ -571,12 +590,13 @@ function buildExactPromptSentToNanoBananaPro(visualDescriptor, compositionPrompt
 }
 
 // Generate images using composition prompts and master prompts (new system)
-async function generateFromMasterPrompts(masterPrompts, referenceImageBuffers, compositionImageBuffers = {}) {
+async function generateFromMasterPrompts(masterPrompts, referenceImageBuffers, compositionImageBuffers = {}, category = null) {
   const results = [];
   const perspectiveIds = Object.keys(masterPrompts);
 
-  console.log(`\n=== Starting Master Prompt generation with Nano Banana Pro ===`);
+  console.log(`\n=== Starting Master Prompt generation ===`);
   console.log(`Reference images: ${referenceImageBuffers.length}`);
+  console.log(`Category: ${category}`);
   console.log(`Perspectives to generate: ${perspectiveIds.length}\n`);
 
   for (let i = 0; i < perspectiveIds.length; i++) {
@@ -590,7 +610,8 @@ async function generateFromMasterPrompts(masterPrompts, referenceImageBuffers, c
       const result = await generateSingleImageWithComposition(
         masterPrompt,
         referenceImageBuffers,
-        null  // Composition image is NOT sent
+        null,  // Composition image is NOT sent
+        category  // Pass category for model selection
       );
       results.push({
         perspectiveId,
@@ -642,15 +663,17 @@ function getQueueStatus() {
 }
 
 // Regenerate a single image using the new composition-based system
-async function regenerateSingleImage(masterPrompt, productImageBuffers, compositionImageBuffer = null) {
+async function regenerateSingleImage(masterPrompt, productImageBuffers, compositionImageBuffer = null, category = null) {
   console.log(`Regenerating single image with composition-based system`);
   console.log(`  Product images: ${productImageBuffers ? productImageBuffers.length : 0}`);
+  console.log(`  Category: ${category}`);
   console.log(`  Composition: via text prompt only (no image sent)`);
 
   const result = await generateSingleImageWithComposition(
     masterPrompt,
     productImageBuffers,
-    null  // Composition image is NOT sent
+    null,  // Composition image is NOT sent
+    category  // Pass category for model selection
   );
 
   return result;

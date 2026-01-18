@@ -371,14 +371,16 @@ async function generateImages(session) {
     // Cache master prompts in session for Advanced modal
     session.masterPrompts = masterPrompts;
 
-    console.log(`\n=== STEP 2: Generating images with Nano Banana Pro ===`);
+    console.log(`\n=== STEP 2: Generating images with image generation model ===`);
     console.log(`Using ${Object.keys(masterPrompts).length} master prompts`);
+    console.log(`Category: ${session.category}`);
 
-    // STEP 2: Generate images using master prompts with Nano Banana Pro
+    // STEP 2: Generate images using master prompts with appropriate model based on category
     const results = await imageGenerator.generateFromMasterPrompts(
       masterPrompts,
       referenceBuffers,
-      {}  // No composition image buffers needed
+      {},  // No composition image buffers needed
+      session.category  // Pass category for model selection
     );
 
     // Store results (temporarily in memory, not yet uploaded to Drive)
@@ -463,11 +465,12 @@ app.post('/api/regenerate/:sessionId/:perspectiveId', requireAuth, async (req, r
       );
     }
 
-    // STEP 2: Generate image with Nano Banana Pro using master prompt
+    // STEP 2: Generate image using master prompt with appropriate model based on category
     const result = await imageGenerator.regenerateSingleImage(
       masterPrompt,
       referenceBuffers,
-      null  // No composition image
+      null,  // No composition image
+      session.category  // Pass category for model selection
     );
 
     // Update the specific image in session

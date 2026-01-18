@@ -96,7 +96,10 @@ Styling & Mood: The background is a seamless, minimalist pure white, creating a 
       prompt: `Placement: The jewelry is arranged in a narrow, horizontal oblong loop, resting flat on a solid surface. It is captured from an elevated three-quarter perspective, showcasing the full length and physical thickness of the piece from a dynamic angle. The fastening mechanism is centered at the top of the arrangement, providing a clear view of structural details while maintaining a balanced horizontal composition.
 Lighting: The scene utilizes professional high-key studio lighting with broad diffusion to ensure even illumination across the entire arrangement. The light source is positioned to create sharp, elegant highlights on the uppermost edges of the material, defining its texture and polished finish. Tonal gradients are smooth and controlled, ensuring the three-dimensional form of each component is clearly visible without deep or obscuring shadows.
 Styling & Mood: The background is a seamless, minimalist pure white, creating a high-contrast environment that isolates the product as the sole focus. A soft, elongated drop shadow is cast immediately beneath the loop, grounding the object and providing a realistic sense of weight and presence on the surface. The overall aesthetic is sophisticated, technical, and premium, typical of high-end luxury e-commerce catalogs.`
-    },
+    }
+  ],
+
+  'armbaand-stiv': [
     {
       id: 'armbaand5',
       name: 'Bangle Profile',
