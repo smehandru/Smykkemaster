@@ -72,38 +72,46 @@ async function processQueue() {
 // Initialize AI for Image Generation
 let vertexAI = null;
 let genAI = null;
-let useApiKey = false;
 
-function initializeNanoBananaPro() {
-  if (!genAI && !vertexAI) {
-    // Prefer API key for gemini-3-pro-image-preview
-    if (GEMINI_API_KEY) {
-      console.log('Initializing gemini-3-pro-image-preview with API key');
-      genAI = new GoogleGenAI({
-        apiKey: GEMINI_API_KEY
-      });
-      useApiKey = true;
-    } else {
-      // Fallback to Vertex AI with service account
-      console.log('Initializing gemini-3-pro-image-preview with Vertex AI (service account)');
-      setupCredentials();
-      vertexAI = new VertexAI({
-        project: PROJECT_ID,
-        location: LOCATION
-      });
-      useApiKey = false;
-    }
+function initializeClients() {
+  // Initialize Vertex AI client if not already done
+  if (!vertexAI) {
+    console.log('Initializing Vertex AI client (service account)');
+    setupCredentials();
+    vertexAI = new VertexAI({
+      project: PROJECT_ID,
+      location: LOCATION
+    });
   }
-  return { genAI, vertexAI, useApiKey };
+
+  // Initialize GoogleGenAI client if API key is available (only for gemini-3-pro-image-preview)
+  if (!genAI && GEMINI_API_KEY) {
+    console.log('Initializing GoogleGenAI client (API key)');
+    genAI = new GoogleGenAI({
+      apiKey: GEMINI_API_KEY
+    });
+  }
+
+  return { genAI, vertexAI };
+}
+
+function shouldUseApiKey(modelName) {
+  // Only use API key for gemini-3-pro-image-preview if available
+  // All other models (including gemini-2.0-flash-exp) use Vertex AI
+  return modelName === 'gemini-3-pro-image-preview' && GEMINI_API_KEY && genAI;
 }
 
 // Generate a single image with Nano Banana Pro
 async function generateSingleImage(prompt, referenceImageBuffers, category = null, retries = RATE_LIMIT.maxRetries) {
   return enqueueRequest(async () => {
-    const { genAI: apiClient, vertexAI: vertexClient, useApiKey: isUsingApiKey } = initializeNanoBananaPro();
-
     // Determine which model to use based on category
     const selectedModel = category ? getModelForCategory(category) : 'gemini-3-pro-image-preview';
+
+    // Initialize clients
+    const { genAI: apiClient, vertexAI: vertexClient } = initializeClients();
+
+    // Determine which auth method to use based on model
+    const isUsingApiKey = shouldUseApiKey(selectedModel);
 
     const parts = [];
 
@@ -320,7 +328,7 @@ async function generateAllPerspectives(visualDescriptor, category, ethnicity, re
 
     try {
       // Pass ALL reference images to the model
-      const result = await generateSingleImage(fullPrompt, referenceImageBuffers);
+      const result = await generateSingleImage(fullPrompt, referenceImageBuffers, category);
       results.push({
         perspectiveId: perspective.id,
         perspectiveName: perspective.name,
@@ -370,7 +378,7 @@ async function regenerateImage(visualDescriptor, category, ethnicity, perspectiv
   );
 
   // Pass ALL reference images to the model
-  const result = await generateSingleImage(fullPrompt, referenceImageBuffers);
+  const result = await generateSingleImage(fullPrompt, referenceImageBuffers, category);
   return {
     perspectiveId: perspective.id,
     perspectiveName: perspective.name,
@@ -382,10 +390,14 @@ async function regenerateImage(visualDescriptor, category, ethnicity, perspectiv
 // Composition guidance is provided through text instructions only
 async function generateSingleImageWithComposition(prompt, productImageBuffers, compositionImageBuffer = null, category = null) {
   return enqueueRequest(async () => {
-    const { genAI: apiClient, vertexAI: vertexClient, useApiKey: isUsingApiKey } = initializeNanoBananaPro();
-
     // Determine which model to use based on category
     const selectedModel = category ? getModelForCategory(category) : 'gemini-3-pro-image-preview';
+
+    // Initialize clients
+    const { genAI: apiClient, vertexAI: vertexClient } = initializeClients();
+
+    // Determine which auth method to use based on model
+    const isUsingApiKey = shouldUseApiKey(selectedModel);
 
     const parts = [];
     const numProductImages = productImageBuffers ? productImageBuffers.length : 0;
