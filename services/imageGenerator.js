@@ -218,12 +218,29 @@ async function generateSingleImage(prompt, referenceImageBuffers, category = nul
       const duration = ((Date.now() - startTime) / 1000).toFixed(1);
       console.log(`Image generated in ${duration}s`);
 
+      // Debug: Log response structure
+      console.log('Response structure:', {
+        hasCandidates: !!result.candidates,
+        candidatesLength: result.candidates?.length,
+        firstCandidate: result.candidates?.[0] ? 'exists' : 'missing',
+        hasContent: !!result.candidates?.[0]?.content,
+        hasParts: !!result.candidates?.[0]?.content?.parts,
+        partsLength: result.candidates?.[0]?.content?.parts?.length
+      });
+
       // Extract generated image from response
       if (result.candidates && result.candidates[0]) {
         const candidate = result.candidates[0];
         if (candidate.content && candidate.content.parts) {
+          console.log('Parts in response:', candidate.content.parts.map(p => ({
+            hasInlineData: !!p.inlineData,
+            hasText: !!p.text,
+            mimeType: p.inlineData?.mimeType
+          })));
+
           for (const part of candidate.content.parts) {
             if (part.inlineData && part.inlineData.data) {
+              console.log('Found image data, mimeType:', part.inlineData.mimeType);
               return {
                 success: true,
                 imageBuffer: Buffer.from(part.inlineData.data, 'base64'),
@@ -244,6 +261,7 @@ async function generateSingleImage(prompt, referenceImageBuffers, category = nul
         }
       }
 
+      console.error('No image data found in response. Full result:', JSON.stringify(result, null, 2));
       throw new Error('No image data in response');
     } catch (error) {
       console.error(`Image generation error (retries left: ${retries}):`, error.message);
@@ -476,12 +494,29 @@ async function generateSingleImageWithComposition(prompt, productImageBuffers, c
       const duration = ((Date.now() - startTime) / 1000).toFixed(1);
       console.log(`Image generated in ${duration}s`);
 
+      // Debug: Log response structure
+      console.log('Response structure:', {
+        hasCandidates: !!result.candidates,
+        candidatesLength: result.candidates?.length,
+        firstCandidate: result.candidates?.[0] ? 'exists' : 'missing',
+        hasContent: !!result.candidates?.[0]?.content,
+        hasParts: !!result.candidates?.[0]?.content?.parts,
+        partsLength: result.candidates?.[0]?.content?.parts?.length
+      });
+
       // Extract generated image from response
       if (result.candidates && result.candidates[0]) {
         const candidate = result.candidates[0];
         if (candidate.content && candidate.content.parts) {
+          console.log('Parts in response:', candidate.content.parts.map(p => ({
+            hasInlineData: !!p.inlineData,
+            hasText: !!p.text,
+            mimeType: p.inlineData?.mimeType
+          })));
+
           for (const part of candidate.content.parts) {
             if (part.inlineData && part.inlineData.data) {
+              console.log('Found image data, mimeType:', part.inlineData.mimeType);
               return {
                 success: true,
                 imageBuffer: Buffer.from(part.inlineData.data, 'base64'),
@@ -493,6 +528,7 @@ async function generateSingleImageWithComposition(prompt, productImageBuffers, c
         }
       }
 
+      console.error('No image data found in response. Full result:', JSON.stringify(result, null, 2));
       throw new Error('No image data in response');
     } catch (error) {
       console.error(`Image generation error:`, error.message);
