@@ -136,6 +136,11 @@ async function generateSingleImage(prompt, referenceImageBuffers, category = nul
       console.log('vertexClient:', !!vertexClient);
       const startTime = Date.now();
 
+      // Determine responseModalities based on model
+      const responseModalities = selectedModel === 'gemini-2.0-flash-exp'
+        ? ['image', 'text']
+        : ['image'];
+
       let response;
       if (isUsingApiKey) {
         // API Key approach (GoogleGenAI)
@@ -144,7 +149,7 @@ async function generateSingleImage(prompt, referenceImageBuffers, category = nul
           model: selectedModel,
           contents: parts,
           generationConfig: {
-            responseModalities: ['image'],
+            responseModalities,
             candidateCount: 1,
           },
           safetySettings: [
@@ -167,7 +172,7 @@ async function generateSingleImage(prompt, referenceImageBuffers, category = nul
           model = vertexClient.getGenerativeModel({
             model: modelName,
             generationConfig: {
-              responseModalities: ['image'],
+              responseModalities,
             }
           });
           console.log('Model obtained:', !!model);
@@ -178,7 +183,7 @@ async function generateSingleImage(prompt, referenceImageBuffers, category = nul
           model = vertexClient.getGenerativeModel({
             model: modelName,
             generationConfig: {
-              responseModalities: ['image'],
+              responseModalities: ['image', 'text'],
             }
           });
         }
@@ -186,7 +191,7 @@ async function generateSingleImage(prompt, referenceImageBuffers, category = nul
         const request = {
           contents: [{ role: 'user', parts }],
           generationConfig: {
-            responseModalities: ['image'],
+            responseModalities,
             candidateCount: 1,
           },
           safetySettings: [
@@ -398,6 +403,11 @@ async function generateSingleImageWithComposition(prompt, productImageBuffers, c
       console.log('Using API Key:', isUsingApiKey);
       const startTime = Date.now();
 
+      // Determine responseModalities based on model
+      const responseModalities = selectedModel === 'gemini-2.0-flash-exp'
+        ? ['image', 'text']
+        : ['image'];
+
       let response;
       if (isUsingApiKey) {
         // API Key approach (GoogleGenAI)
@@ -405,7 +415,7 @@ async function generateSingleImageWithComposition(prompt, productImageBuffers, c
           model: selectedModel,
           contents: parts,
           generationConfig: {
-            responseModalities: ['image'],
+            responseModalities,
             candidateCount: 1,
           },
           safetySettings: [
@@ -424,7 +434,7 @@ async function generateSingleImageWithComposition(prompt, productImageBuffers, c
           model = vertexClient.getGenerativeModel({
             model: modelName,
             generationConfig: {
-              responseModalities: ['image'],
+              responseModalities,
             }
           });
         } catch (modelError) {
@@ -433,7 +443,7 @@ async function generateSingleImageWithComposition(prompt, productImageBuffers, c
           model = vertexClient.getGenerativeModel({
             model: modelName,
             generationConfig: {
-              responseModalities: ['image'],
+              responseModalities: ['image', 'text'],
             }
           });
         }
@@ -446,7 +456,7 @@ async function generateSingleImageWithComposition(prompt, productImageBuffers, c
         const request = {
           contents: [{ role: 'user', parts }],
           generationConfig: {
-            responseModalities: ['image'],
+            responseModalities,
             candidateCount: 1,
           },
           safetySettings: [
