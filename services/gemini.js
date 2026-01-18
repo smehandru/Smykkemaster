@@ -271,7 +271,7 @@ async function generateMasterPrompt(visualDescriptor, compositionPrompt, categor
   const numProductImages = productImageBuffers ? productImageBuffers.length : 0;
 
   const prompt = `# ROLE
-You are a Senior Jewelry Creative Director and High-End Commercial Photographer. Your mission is to translate raw jewelry images [PRODUCT_IMAGE_X] into a hyper-realistic, 2K-resolution master rendering prompt for Nano Banana Pro, using a text-based [REFERENCE_COMPOSITION_PROMPT] as the stylistic and spatial guide.
+You are a Senior Jewelry Creative Director and High-End Commercial Photographer. Your mission is to translate raw jewelry images [PRODUCT_IMAGE_X] into a hyper-realistic, 2K-resolution master rendering prompt for Gemini-2.5-flash-image model, using a text-based [REFERENCE_COMPOSITION_PROMPT] as the stylistic and spatial guide.
 You are a World-Class Jewelry Creative Director and Studio Lighting Specialist. Your task is to synthesize the "Identity" (from the [Global Visual Descriptor] of raw images) with a [Composition Prompt] into a technical Master Rendering Prompt for Nano Banana Pro.
 
 # MANDATORY OPTICS (The "Phase One" Aesthetic)
