@@ -11,6 +11,7 @@ const { v4: uuidv4 } = require('uuid');
 // Services
 const googleDrive = require('./services/googleDrive');
 const googleSheets = require('./services/googleSheets');
+const googleStorage = require('./services/googleStorage');
 const gemini = require('./services/gemini');
 const imageGenerator = require('./services/imageGenerator');
 const { PROMPTS } = require('./config/prompts');
@@ -444,25 +445,47 @@ async function generateImagesStreaming(session, sendEvent) {
           session.category
         );
 
+        let gcsUrl = null;
+        let gcsPath = null;
+
+        // Upload to GCS for fast web display
+        if (result.success && result.imageBuffer) {
+          const gcsResult = await googleStorage.uploadTemporaryImage(
+            result.imageBuffer,
+            session.id,
+            perspectiveId,
+            result.mimeType || 'image/jpeg'
+          );
+
+          if (gcsResult.success) {
+            gcsUrl = gcsResult.publicUrl;
+            gcsPath = gcsResult.gcsPath;
+            console.log(`✓ Image uploaded to GCS: ${gcsUrl}`);
+          } else {
+            console.warn(`Failed to upload to GCS: ${gcsResult.error}`);
+          }
+        }
+
         const imageData = {
           perspectiveId,
           perspectiveName: perspectiveId,
           imageNumber: i + 1,
           success: result.success,
-          imageBase64: result.success ? result.imageBuffer.toString('base64') : null,
-          imageBuffer: result.success ? result.imageBuffer : null,
+          gcsUrl, // GCS public URL for fast display
+          gcsPath, // GCS path for reference
+          imageBuffer: result.success ? result.imageBuffer : null, // Keep buffer for Drive upload
           error: result.error
         };
 
         session.generatedImages.push(imageData);
 
-        // Send image immediately to client
+        // Send image immediately to client with GCS URL
         sendEvent('image-complete', {
           perspectiveId,
           perspectiveName: perspectiveId,
           imageNumber: i + 1,
           success: result.success,
-          imageBase64: result.success ? result.imageBuffer.toString('base64') : null,
+          gcsUrl, // Send GCS URL instead of base64
           error: result.error,
           progress: Math.round(((i + 1) / perspectiveIds.length) * 100)
         });
@@ -576,13 +599,37 @@ async function generateImages(session) {
       session.category  // Pass category for model selection
     );
 
-    // Store results (temporarily in memory, not yet uploaded to Drive)
-    session.generatedImages = results.map(r => ({
-      ...r,
-      imageBase64: r.success ? r.imageBuffer.toString('base64') : null,
-      imageBuffer: r.success ? r.imageBuffer : null
-    }));
+    // Store results and upload to GCS for fast display
+    const imagesWithGcs = [];
+    for (const r of results) {
+      let gcsUrl = null;
+      let gcsPath = null;
 
+      // Upload to GCS for fast web display
+      if (r.success && r.imageBuffer) {
+        const gcsResult = await googleStorage.uploadTemporaryImage(
+          r.imageBuffer,
+          session.id,
+          r.perspectiveId,
+          r.mimeType || 'image/jpeg'
+        );
+
+        if (gcsResult.success) {
+          gcsUrl = gcsResult.publicUrl;
+          gcsPath = gcsResult.gcsPath;
+        }
+      }
+
+      imagesWithGcs.push({
+        ...r,
+        gcsUrl,
+        gcsPath,
+        imageBase64: r.success ? r.imageBuffer.toString('base64') : null, // Fallback
+        imageBuffer: r.success ? r.imageBuffer : null
+      });
+    }
+
+    session.generatedImages = imagesWithGcs;
     session.status = 'generated';
     console.log(`Generation complete for session ${session.id}`);
   } catch (error) {
@@ -599,14 +646,15 @@ app.get('/api/generated/:sessionId', requireAuth, (req, res) => {
     return res.status(404).json({ error: 'Session not found' });
   }
 
-  // Return images without the buffer (just base64 for display)
+  // Return images with GCS URL (preferred) or base64 for display
   const images = session.generatedImages.map(img => ({
     perspectiveId: img.perspectiveId,
     perspectiveName: img.perspectiveName,
     imageNumber: img.imageNumber,
     success: img.success,
     error: img.error,
-    imageBase64: img.imageBase64,
+    gcsUrl: img.gcsUrl, // GCS public URL for fast display
+    imageBase64: img.imageBase64, // Fallback for backwards compatibility
     driveLink: img.driveLink
   }));
 
@@ -1181,6 +1229,11 @@ app.use((err, req, res, next) => {
 
 async function startServer() {
   try {
+    // Test Google Cloud Storage connection
+    console.log('Testing Google Cloud Storage connection...');
+    await googleStorage.testConnection();
+    console.log('Google Cloud Storage initialized');
+
     // Initialize Google Drive folders
     console.log('Initializing Google Drive folders...');
     await googleDrive.initializeFolders();

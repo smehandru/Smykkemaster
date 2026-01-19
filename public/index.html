@@ -1854,7 +1854,7 @@
             perspectiveName: data.perspectiveName,
             imageNumber: data.imageNumber,
             success: data.success,
-            imageBase64: data.imageBase64,
+            gcsUrl: data.gcsUrl, // Use GCS URL instead of base64
             error: data.error
           });
 
@@ -2010,10 +2010,13 @@
       }
 
       // Replace the skeleton/loading with the actual image or error
-      if (img.success && img.imageBase64) {
+      if (img.success && (img.gcsUrl || img.imageBase64)) {
+        // Prefer GCS URL for fast loading, fall back to base64
+        const imageSrc = img.gcsUrl || `data:image/jpeg;base64,${img.imageBase64}`;
+
         existingItem.innerHTML = `
-          <div class="image-container" onclick="openModal('data:image/jpeg;base64,${img.imageBase64}')">
-            <img src="data:image/jpeg;base64,${img.imageBase64}" alt="${img.perspectiveName}">
+          <div class="image-container" onclick="openModal('${imageSrc}')">
+            <img src="${imageSrc}" alt="${img.perspectiveName}">
             <span class="image-number">${img.imageNumber}</span>
             <button class="regenerate-btn" id="regen_${img.perspectiveId}" onclick="event.stopPropagation(); regenerateImage('${img.perspectiveId}')">↻</button>
           </div>
@@ -2042,11 +2045,14 @@
       if (!images || images.length === 0) return;
 
       grid.innerHTML = images.map(img => {
-        if (img.success && img.imageBase64) {
+        if (img.success && (img.gcsUrl || img.imageBase64)) {
+          // Prefer GCS URL for fast loading, fall back to base64
+          const imageSrc = img.gcsUrl || `data:image/jpeg;base64,${img.imageBase64}`;
+
           return `
             <div class="gallery-item" data-perspective="${img.perspectiveId}">
-              <div class="image-container" onclick="openModal('data:image/jpeg;base64,${img.imageBase64}')">
-                <img src="data:image/jpeg;base64,${img.imageBase64}" alt="${img.perspectiveName}">
+              <div class="image-container" onclick="openModal('${imageSrc}')">
+                <img src="${imageSrc}" alt="${img.perspectiveName}">
                 <span class="image-number">${img.imageNumber}</span>
                 <button class="regenerate-btn" id="regen_${img.perspectiveId}" onclick="event.stopPropagation(); regenerateImage('${img.perspectiveId}')">↻</button>
               </div>
