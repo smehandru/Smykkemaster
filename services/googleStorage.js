@@ -34,8 +34,10 @@ async function initializeStorage() {
       const [exists] = await bucket.exists();
       if (!exists) {
         console.log(`Creating GCS bucket: ${BUCKET_NAME}...`);
+
+        // 1. Create Bucket with Uniform Access Enabled
         await storage.createBucket(BUCKET_NAME, {
-          location: 'US',
+          location: 'US-CENTRAL1', // Match your Vertex AI region
           storageClass: 'STANDARD',
           iamConfiguration: {
             uniformBucketLevelAccess: {
@@ -44,18 +46,18 @@ async function initializeStorage() {
           },
         });
 
-        // Make bucket publicly readable
-        await bucket.setMetadata({
-          iamConfiguration: {
-            uniformBucketLevelAccess: {
-              enabled: true,
+        // 2. Make Bucket Public via IAM Policy (The modern way)
+        // This grants "Storage Object Viewer" to "allUsers"
+        await bucket.iam.setPolicy({
+          bindings: [
+            {
+              role: 'roles/storage.objectViewer',
+              members: ['allUsers'],
             },
-          },
+          ],
         });
 
-        // Add public read permission
-        await bucket.makePublic();
-        console.log(`✓ Bucket ${BUCKET_NAME} created successfully`);
+        console.log(`✓ Bucket ${BUCKET_NAME} created and made public via IAM`);
       } else {
         console.log(`✓ Using existing bucket: ${BUCKET_NAME}`);
       }
@@ -83,13 +85,14 @@ async function uploadTemporaryImage(imageBuffer, sessionId, perspectiveId, mimeT
     const fileName = `temp/${sessionId}/${perspectiveId}.jpg`;
     const file = bucket.file(fileName);
 
-    // Upload with public read access
+    // Upload WITHOUT the "public: true" flag
+    // The file inherits public access from the bucket's IAM policy
     await file.save(imageBuffer, {
       metadata: {
         contentType: mimeType,
         cacheControl: 'public, max-age=3600', // Cache for 1 hour
       },
-      public: true, // Make publicly accessible
+      resumable: false // Better for small images
     });
 
     // Get public URL
