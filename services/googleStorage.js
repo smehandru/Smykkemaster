@@ -20,7 +20,7 @@ function setupCredentials() {
 let storage = null;
 let bucket = null;
 
-function initializeStorage() {
+async function initializeStorage() {
   if (!storage) {
     setupCredentials();
     storage = new Storage({
@@ -28,7 +28,41 @@ function initializeStorage() {
       keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS
     });
     bucket = storage.bucket(BUCKET_NAME);
-    console.log(`GCS initialized with bucket: ${BUCKET_NAME}`);
+
+    // Check if bucket exists, create if not
+    try {
+      const [exists] = await bucket.exists();
+      if (!exists) {
+        console.log(`Creating GCS bucket: ${BUCKET_NAME}...`);
+        await storage.createBucket(BUCKET_NAME, {
+          location: 'US',
+          storageClass: 'STANDARD',
+          iamConfiguration: {
+            uniformBucketLevelAccess: {
+              enabled: true,
+            },
+          },
+        });
+
+        // Make bucket publicly readable
+        await bucket.setMetadata({
+          iamConfiguration: {
+            uniformBucketLevelAccess: {
+              enabled: true,
+            },
+          },
+        });
+
+        // Add public read permission
+        await bucket.makePublic();
+        console.log(`✓ Bucket ${BUCKET_NAME} created successfully`);
+      } else {
+        console.log(`✓ Using existing bucket: ${BUCKET_NAME}`);
+      }
+    } catch (error) {
+      console.error('Bucket initialization error:', error.message);
+      // Continue anyway - bucket might exist but we can't check
+    }
   }
   return { storage, bucket };
 }
@@ -43,7 +77,7 @@ function initializeStorage() {
  */
 async function uploadTemporaryImage(imageBuffer, sessionId, perspectiveId, mimeType = 'image/jpeg') {
   try {
-    const { bucket } = initializeStorage();
+    const { bucket } = await initializeStorage();
 
     // Create path: temp/{sessionId}/{perspectiveId}.jpg
     const fileName = `temp/${sessionId}/${perspectiveId}.jpg`;
@@ -84,7 +118,7 @@ async function uploadTemporaryImage(imageBuffer, sessionId, perspectiveId, mimeT
  */
 async function deleteTemporaryImages(sessionId) {
   try {
-    const { bucket } = initializeStorage();
+    const { bucket } = await initializeStorage();
 
     const [files] = await bucket.getFiles({
       prefix: `temp/${sessionId}/`
@@ -117,7 +151,7 @@ async function deleteTemporaryImages(sessionId) {
  */
 async function copyImage(gcsPath, destinationPath) {
   try {
-    const { bucket } = initializeStorage();
+    const { bucket } = await initializeStorage();
 
     const sourceFile = bucket.file(gcsPath);
     const destinationFile = bucket.file(destinationPath);
@@ -143,7 +177,7 @@ async function copyImage(gcsPath, destinationPath) {
  */
 async function downloadImage(gcsPath) {
   try {
-    const { bucket } = initializeStorage();
+    const { bucket } = await initializeStorage();
 
     const file = bucket.file(gcsPath);
     const [buffer] = await file.download();
@@ -167,7 +201,7 @@ async function downloadImage(gcsPath) {
  */
 async function testConnection() {
   try {
-    const { bucket } = initializeStorage();
+    const { bucket } = await initializeStorage();
 
     const [files] = await bucket.getFiles({ maxResults: 10 });
     console.log(`✓ GCS connection successful! Found ${files.length} files`);
