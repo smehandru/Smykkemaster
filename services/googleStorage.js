@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 
 const PROJECT_ID = process.env.GOOGLE_PROJECT_ID || 'project-bcb47e5a-1886-41ee-a91';
-const BUCKET_NAME = 'jewelry-images-upload-2026';
+const BUCKET_NAME = 'smykkemaster';
 
 // Setup credentials
 function setupCredentials() {
