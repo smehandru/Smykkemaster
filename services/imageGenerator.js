@@ -29,9 +29,10 @@ function setupCredentials() {
 }
 
 // Rate limiting configuration
+// Balanced for multiple concurrent users while respecting API quotas
 const RATE_LIMIT = {
-  maxConcurrent: 2,
-  delayBetweenRequests: 3000,
+  maxConcurrent: 5,  // Allow 5 concurrent image generations (supports ~5 users simultaneously)
+  delayBetweenRequests: 2000,  // Reduced delay since we have more concurrent slots
   maxRetries: 3,
   retryDelay: 8000
 };
