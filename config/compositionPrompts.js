@@ -117,7 +117,7 @@ Styling & Mood: The surface is a warm, polished beige marble, earthy color varia
       id: 'oredobber1',
       name: 'Dual Staggered',
       imageFile: 'oredobber1.png',
-      prompt: `Placement: The jewelry is staged as a coordinated pair in a staggered, dual-perspective composition. One component is positioned vertically in the background, oriented to provide a direct frontal view of its primary decorative surface. The second component is placed in the foreground at a tilted, three-quarter angle, specifically oriented to reveal the side profile, internal depth, and any mechanical or fastening details.
+      prompt: `Placement: The ear rings is staged as a coordinated pair in a staggered, dual-perspective composition. One component is positioned vertically in the background, oriented to provide a direct frontal view of its primary decorative surface. The second component is placed in the foreground at a tilted, three-quarter angle, specifically oriented to reveal the side profile, internal depth, and any mechanical or fastening details.
 Lighting: The scene utilizes professional high-key studio lighting with multi-directional diffusion. The setup is designed to create sharp, brilliant specular highlights on the uppermost polished edges of both pieces, emphasizing material quality and fine detail. The light is balanced to ensure the interior of the foreground piece is clearly illuminated, revealing structural features without deep, obscuring shadows.
 Styling & Mood: The background is pure #FFFFFF white, ensuring the product pair is the absolute focus. Soft, subtle drop shadows are cast beneath each piece to ground them to the surface, providing a realistic sense of weight and three-dimensional presence. The overall mood is sophisticated, technical, and luxurious, typical of premium "hero shots" in high-end jewelry e-commerce catalogs.`
     },
@@ -125,14 +125,14 @@ Styling & Mood: The background is pure #FFFFFF white, ensuring the product pair 
       id: 'oredobber2',
       name: 'Side-by-Side Profile',
       imageFile: 'oredobber2.png',
-      prompt: `Placement: The jewelry is staged as a coordinated pair in a balanced, side-by-side composition. The left component is positioned to provide a clean, direct profile view, while the right component is rotated to a three-quarter angle, specifically oriented to reveal the internal depth, thickness, and fastening mechanism.
+      prompt: `Placement: The the ear rings is staged as a coordinated pair in a balanced, side-by-side composition. The left component is positioned to provide a clean, direct profile view, while the right component is rotated to a three-quarter angle, specifically oriented to reveal the internal depth, thickness, and fastening mechanism.
 Styling & Mood: The surface is a high-end polished beige marble with subtle, warm-toned natural veining. The texture is smooth and glossy, providing a luxurious and clean minimalist background.`
     },
     {
       id: 'oredobber3',
       name: 'Top-Down Diagonal',
       imageFile: 'oredobber3.png',
-      prompt: `Placement: The jewelry is staged a single earring in a dynamic, staggered diagonal composition. The object is captured from an elevated top-down perspective, with one piece positioned in the upper right of the frame. It is oriented at a slight angle to the camera to showcase three-dimensional volume and structural details, such as attachment loops or facets.
+      prompt: `Placement: The jewelry is staged a single ear ring in a dynamic, staggered diagonal composition. The object is captured from an elevated top-down perspective, with one piece positioned in the upper right of the frame. It is oriented at a slight angle to the camera to showcase three-dimensional volume and structural details, such as attachment loops or facets.
 Styling & Mood: The surface is a warm, polished beige marble, earthy color variations. The background is a smooth, blurry continuation of this stone texture, creating a seamless horizon line that fades into a soft creamy beige gradient. Lighting is soft, warm, and directional, mimicking natural window light coming from the side. This creates gentle, elongated shadows that firmly ground the jewelry to the stone. The atmosphere is calm, organic, and sophisticated—like a high-end lifestyle editorial.`
     },
     {
