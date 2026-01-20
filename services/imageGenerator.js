@@ -94,9 +94,10 @@ function initializeClients() {
 }
 
 function shouldUseApiKey(modelName) {
-  // Use API key for gemini-3-pro-image-preview, gemini-2.5-flash-image, and gemini-3-flash if available
+  // gemini-3-pro-image-preview REQUIRES Vertex AI (does not support API keys)
+  // gemini-2.5-flash-image and gemini-3-flash can use API key if available
   // All other models use Vertex AI
-  const apiKeyModels = ['gemini-3-pro-image-preview', 'gemini-2.5-flash-image', 'gemini-3-flash'];
+  const apiKeyModels = ['gemini-2.5-flash-image', 'gemini-3-flash'];
   return apiKeyModels.includes(modelName) && GEMINI_API_KEY && genAI;
 }
 
@@ -144,7 +145,8 @@ async function generateSingleImage(prompt, referenceImageBuffers, category = nul
       const startTime = Date.now();
 
       // Determine responseModalities based on model
-      const responseModalities = (selectedModel === 'gemini-3-flash' || selectedModel === 'gemini-2.5-flash-image' || selectedModel === 'gemini-2.0-flash-exp')
+      // gemini-3-pro-image-preview supports both image and text output
+      const responseModalities = (selectedModel === 'gemini-3-flash' || selectedModel === 'gemini-2.5-flash-image' || selectedModel === 'gemini-2.0-flash-exp' || selectedModel === 'gemini-3-pro-image-preview')
         ? ['image', 'text']
         : ['image'];
 
@@ -433,7 +435,8 @@ async function generateSingleImageWithComposition(prompt, productImageBuffers, c
       const startTime = Date.now();
 
       // Determine responseModalities based on model
-      const responseModalities = (selectedModel === 'gemini-3-flash' || selectedModel === 'gemini-2.5-flash-image' || selectedModel === 'gemini-2.0-flash-exp')
+      // gemini-3-pro-image-preview supports both image and text output
+      const responseModalities = (selectedModel === 'gemini-3-flash' || selectedModel === 'gemini-2.5-flash-image' || selectedModel === 'gemini-2.0-flash-exp' || selectedModel === 'gemini-3-pro-image-preview')
         ? ['image', 'text']
         : ['image'];
 
