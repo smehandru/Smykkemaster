@@ -8,13 +8,13 @@ const PROJECT_ID = process.env.GOOGLE_PROJECT_ID || 'project-bcb47e5a-1886-41ee-
 const LOCATION = 'us-central1';
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 
-// All categories use gemini-2.5-flash-image (API key supported)
+// All categories use gemini-3-pro-image-preview
 const FLASH_MODEL_CATEGORIES = [];
 
 // Determine which model to use based on category
 function getModelForCategory(category) {
-  // All categories use gemini-2.5-flash-image (supports API key authentication)
-  return 'gemini-2.5-flash-image';
+  // All categories use gemini-3-pro-image-preview
+  return 'gemini-3-pro-image-preview';
 }
 
 // Setup credentials for Vertex AI
@@ -94,10 +94,9 @@ function initializeClients() {
 }
 
 function shouldUseApiKey(modelName) {
-  // gemini-3-pro-image-preview REQUIRES Vertex AI (does not support API keys)
-  // gemini-2.5-flash-image and gemini-3-flash can use API key if available
+  // Use API key for gemini-3-pro-image-preview, gemini-2.5-flash-image, and gemini-3-flash if available
   // All other models use Vertex AI
-  const apiKeyModels = ['gemini-2.5-flash-image', 'gemini-3-flash'];
+  const apiKeyModels = ['gemini-3-pro-image-preview', 'gemini-2.5-flash-image', 'gemini-3-flash'];
   return apiKeyModels.includes(modelName) && GEMINI_API_KEY && genAI;
 }
 
