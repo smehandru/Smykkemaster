@@ -278,6 +278,17 @@ app.get('/api/generate-stream/:sessionId', requireAuth, async (req, res) => {
     res.write(`data: ${JSON.stringify(data)}\n\n`);
   };
 
+  // Keepalive: Send heartbeat every 15 seconds to prevent mobile timeout
+  const keepaliveInterval = setInterval(() => {
+    res.write(': keepalive\n\n');
+  }, 15000);
+
+  // Clean up on connection close
+  req.on('close', () => {
+    clearInterval(keepaliveInterval);
+    console.log(`SSE connection closed for session ${req.params.sessionId}`);
+  });
+
   try {
     // Store custom prompts and selected perspectives from query params
     const customPromptsJson = req.query.customPrompts;
@@ -306,10 +317,12 @@ app.get('/api/generate-stream/:sessionId', requireAuth, async (req, res) => {
       successCount: session.generatedImages.filter(i => i.success).length
     });
 
+    clearInterval(keepaliveInterval);
     res.end();
   } catch (error) {
     console.error('Streaming generation error:', error);
     sendEvent('error', { message: error.message });
+    clearInterval(keepaliveInterval);
     res.end();
   }
 });
