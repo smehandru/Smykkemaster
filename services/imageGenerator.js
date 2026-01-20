@@ -656,7 +656,7 @@ function buildExactPromptSentToNanoBananaPro(visualDescriptor, compositionPrompt
 }
 
 // Generate images using composition prompts and master prompts (new system)
-async function generateFromMasterPrompts(masterPrompts, referenceImageBuffers, compositionImageBuffers = {}, category = null) {
+async function generateFromMasterPrompts(masterPrompts, referenceImageBuffers, compositionImageBuffers = {}, category = null, onImageComplete = null) {
   const results = [];
   const perspectiveIds = Object.keys(masterPrompts);
 
@@ -679,22 +679,34 @@ async function generateFromMasterPrompts(masterPrompts, referenceImageBuffers, c
         null,  // Composition image is NOT sent
         category  // Pass category for model selection
       );
-      results.push({
+      const imageResult = {
         perspectiveId,
         perspectiveName: perspectiveId,
         imageNumber: i + 1,
         ...result
-      });
+      };
+      results.push(imageResult);
       console.log(`✓ ${perspectiveId} completed`);
+
+      // Call progress callback if provided (for mobile polling updates)
+      if (onImageComplete && typeof onImageComplete === 'function') {
+        await onImageComplete(imageResult, i + 1, perspectiveIds.length);
+      }
     } catch (error) {
       console.error(`✗ Failed to generate ${perspectiveId}:`, error.message);
-      results.push({
+      const errorResult = {
         perspectiveId,
         perspectiveName: perspectiveId,
         imageNumber: i + 1,
         success: false,
         error: error.message
-      });
+      };
+      results.push(errorResult);
+
+      // Call progress callback even for errors
+      if (onImageComplete && typeof onImageComplete === 'function') {
+        await onImageComplete(errorResult, i + 1, perspectiveIds.length);
+      }
     }
   }
 

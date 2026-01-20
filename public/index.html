@@ -1819,26 +1819,118 @@
         const perspData = await perspRes.json();
         showGallerySkeletons(perspData.perspectives.filter(p => effectivePerspectives.includes(p.id)));
 
-        // Use Server-Sent Events for streaming with mobile-friendly fallback
-        const params = new URLSearchParams({
-          customPrompts: JSON.stringify(filteredPrompts),
-          selectedPerspectives: JSON.stringify(effectivePerspectives)
-        });
+        // Detect if mobile device
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        console.log('Device type:', isMobile ? 'Mobile' : 'Desktop');
 
-        let eventSource = null;
-        let pollingInterval = null;
-        let lastProgress = 0;
-        let connectionAttempts = 0;
-        const MAX_CONNECTION_ATTEMPTS = 3;
+        if (isMobile) {
+          // Mobile: Use polling-only mode (more reliable)
+          startGenerationWithPolling();
+        } else {
+          // Desktop: Use SSE streaming
+          startGenerationWithSSE();
+        }
 
-        function startSSE() {
-          eventSource = new EventSource(`/api/generate-stream/${currentSession.id}?${params}`);
-          connectionAttempts++;
+        async function startGenerationWithPolling() {
+          console.log('Starting generation with polling (mobile mode)');
+          showStatus('Starter generering (mobil modus)...', 'info', true);
+
+          try {
+            // Start generation via POST endpoint
+            const res = await fetch(`/api/generate/${currentSession.id}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ customPrompts: filteredPrompts, selectedPerspectives: effectivePerspectives })
+            });
+
+            const data = await res.json();
+
+            if (data.success) {
+              currentSession.status = 'generating';
+              saveSessionToStorage();
+
+              showStatus('Genererer bilder...', 'info', true);
+
+              // Start polling for results
+              let pollingAttempts = 0;
+              const maxPollingAttempts = 120; // 6 minutes max (120 * 3s)
+
+              const pollingInterval = setInterval(async () => {
+                pollingAttempts++;
+
+                if (pollingAttempts > maxPollingAttempts) {
+                  clearInterval(pollingInterval);
+                  showStatus('Generering tok for lang tid', 'error', false);
+                  resetGenerateButton();
+                  return;
+                }
+
+                try {
+                  const pollRes = await fetch(`/api/generated/${currentSession.id}`);
+                  const pollData = await pollRes.json();
+
+                  console.log(`Poll ${pollingAttempts}:`, {
+                    status: pollData.status,
+                    imageCount: pollData.images?.length,
+                    completed: pollData.images?.filter(i => i.success || i.error).length
+                  });
+
+                  // Update gallery with any new images
+                  if (pollData.images && pollData.images.length > 0) {
+                    pollData.images.forEach(img => {
+                      if (img.success && img.gcsUrl) {
+                        updateSingleImageInGallery(img);
+                      } else if (img.error) {
+                        updateSingleImageInGallery(img);
+                      }
+                    });
+
+                    const completedCount = pollData.images.filter(i => i.success || i.error).length;
+                    const totalCount = pollData.images.length;
+                    const progress = Math.round((completedCount / totalCount) * 100);
+                    text.textContent = `Genererer: ${completedCount}/${totalCount} (${progress}%)`;
+                  }
+
+                  if (pollData.status === 'generated') {
+                    clearInterval(pollingInterval);
+                    currentSession.status = 'generated';
+                    saveSessionToStorage();
+
+                    const successCount = pollData.images.filter(i => i.success).length;
+                    showStatus(`Alle bilder generert! ${successCount}/${pollData.images.length} vellykkede`, 'success', false);
+                    resetGenerateButton();
+                    document.getElementById('saveSection').classList.remove('hidden');
+                  } else if (pollData.status === 'error') {
+                    clearInterval(pollingInterval);
+                    showStatus('Generering feilet: ' + (pollData.error || 'Ukjent feil'), 'error', false);
+                    resetGenerateButton();
+                  }
+                } catch (error) {
+                  console.error('Polling error:', error);
+                }
+              }, 3000); // Poll every 3 seconds
+
+            } else {
+              showStatus(data.error || 'Kunne ikke starte generering', 'error', false);
+              resetGenerateButton();
+            }
+          } catch (error) {
+            showStatus('Feil ved oppstart: ' + error.message, 'error', false);
+            resetGenerateButton();
+          }
+        }
+
+        function startGenerationWithSSE() {
+          const params = new URLSearchParams({
+            customPrompts: JSON.stringify(filteredPrompts),
+            selectedPerspectives: JSON.stringify(effectivePerspectives)
+          });
+
+          const eventSource = new EventSource(`/api/generate-stream/${currentSession.id}?${params}`);
 
           eventSource.addEventListener('start', (e) => {
             const data = JSON.parse(e.data);
             console.log('Generation started:', data.message);
-            connectionAttempts = 0; // Reset on successful connection
           });
 
           eventSource.addEventListener('progress', (e) => {
@@ -1850,15 +1942,12 @@
           eventSource.addEventListener('image-start', (e) => {
             const data = JSON.parse(e.data);
             text.textContent = `${data.imageNumber}/${data.total}: ${data.perspectiveId}...`;
-            showStatus(data.message, 'info', true);
           });
 
           eventSource.addEventListener('image-complete', (e) => {
             const data = JSON.parse(e.data);
             console.log(`Image ${data.imageNumber} complete:`, data.perspectiveId);
-            lastProgress = data.progress || 0;
 
-            // Update gallery with this image immediately!
             updateSingleImageInGallery({
               perspectiveId: data.perspectiveId,
               perspectiveName: data.perspectiveName,
@@ -1886,7 +1975,7 @@
           eventSource.addEventListener('complete', (e) => {
             const data = JSON.parse(e.data);
             console.log('All images complete:', data);
-            cleanup();
+            eventSource.close();
 
             currentSession.status = 'generated';
             saveSessionToStorage();
@@ -1896,92 +1985,13 @@
             document.getElementById('saveSection').classList.remove('hidden');
           });
 
-          eventSource.addEventListener('error', (e) => {
-            console.error('EventSource error:', e);
-            if (e.data) {
-              const data = JSON.parse(e.data);
-              showStatus('Generering feilet: ' + data.message, 'error', false);
-              cleanup();
-              resetGenerateButton();
-            }
-          });
-
           eventSource.onerror = (err) => {
-            console.error('SSE connection error, attempt', connectionAttempts);
-
-            if (connectionAttempts < MAX_CONNECTION_ATTEMPTS && currentSession.status === 'generating') {
-              // Try reconnecting
-              console.log('Attempting to reconnect SSE...');
-              eventSource.close();
-              setTimeout(() => {
-                if (currentSession.status === 'generating') {
-                  startSSE();
-                }
-              }, 2000);
-            } else {
-              // Switch to polling fallback for mobile
-              console.log('SSE failed, switching to polling fallback');
-              eventSource.close();
-              startPollingFallback();
-            }
+            console.error('SSE connection error:', err);
+            eventSource.close();
+            showStatus('Tilkobling feilet', 'error', false);
+            resetGenerateButton();
           };
         }
-
-        function startPollingFallback() {
-          console.log('Using polling fallback (better for mobile)');
-          showStatus('Bruker alternativ metode for mobil...', 'info', true);
-
-          pollingInterval = setInterval(async () => {
-            try {
-              const res = await fetch(`/api/generated/${currentSession.id}`);
-              const data = await res.json();
-
-              // Update gallery with any new images
-              if (data.images && data.images.length > 0) {
-                data.images.forEach(img => {
-                  if (img.success && img.gcsUrl) {
-                    updateSingleImageInGallery(img);
-                  }
-                });
-
-                const completedCount = data.images.filter(i => i.success).length;
-                const progress = Math.round((completedCount / data.images.length) * 100);
-                text.textContent = `Generert ${progress}%`;
-              }
-
-              if (data.status === 'generated') {
-                cleanup();
-                currentSession.status = 'generated';
-                saveSessionToStorage();
-
-                const successCount = data.images.filter(i => i.success).length;
-                showStatus(`Alle bilder generert! ${successCount}/${data.images.length} vellykkede`, 'success', false);
-                resetGenerateButton();
-                document.getElementById('saveSection').classList.remove('hidden');
-              } else if (data.status === 'error') {
-                cleanup();
-                showStatus('Generering feilet: ' + data.error, 'error', false);
-                resetGenerateButton();
-              }
-            } catch (error) {
-              console.error('Polling error:', error);
-            }
-          }, 3000); // Poll every 3 seconds
-        }
-
-        function cleanup() {
-          if (eventSource) {
-            eventSource.close();
-            eventSource = null;
-          }
-          if (pollingInterval) {
-            clearInterval(pollingInterval);
-            pollingInterval = null;
-          }
-        }
-
-        // Start with SSE, will fallback to polling if needed
-        startSSE();
 
       } catch (error) {
         showStatus('Generering feilet: ' + error.message, 'error', false);

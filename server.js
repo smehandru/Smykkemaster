@@ -605,26 +605,21 @@ async function generateImages(session) {
     console.log(`Category: ${session.category}`);
 
     // STEP 2: Generate images using master prompts with appropriate model based on category
-    const results = await imageGenerator.generateFromMasterPrompts(
-      masterPrompts,
-      referenceBuffers,
-      {},  // No composition image buffers needed
-      session.category  // Pass category for model selection
-    );
+    // Initialize empty array for progressive updates (important for mobile polling)
+    session.generatedImages = [];
 
-    // Store results and upload to GCS for fast display
-    const imagesWithGcs = [];
-    for (const r of results) {
+    // Define callback for progressive updates (mobile polling will see these immediately)
+    const onImageComplete = async (imageResult, currentIndex, totalCount) => {
       let gcsUrl = null;
       let gcsPath = null;
 
       // Upload to GCS for fast web display
-      if (r.success && r.imageBuffer) {
+      if (imageResult.success && imageResult.imageBuffer) {
         const gcsResult = await googleStorage.uploadTemporaryImage(
-          r.imageBuffer,
+          imageResult.imageBuffer,
           session.id,
-          r.perspectiveId,
-          r.mimeType || 'image/jpeg'
+          imageResult.perspectiveId,
+          imageResult.mimeType || 'image/jpeg'
         );
 
         if (gcsResult.success) {
@@ -633,16 +628,27 @@ async function generateImages(session) {
         }
       }
 
-      imagesWithGcs.push({
-        ...r,
+      const imageWithGcs = {
+        ...imageResult,
         gcsUrl,
         gcsPath,
-        imageBase64: r.success ? r.imageBuffer.toString('base64') : null, // Fallback
-        imageBuffer: r.success ? r.imageBuffer : null
-      });
-    }
+        imageBase64: imageResult.success ? imageResult.imageBuffer.toString('base64') : null, // Fallback
+        imageBuffer: imageResult.success ? imageResult.imageBuffer : null
+      };
 
-    session.generatedImages = imagesWithGcs;
+      // Update session immediately - mobile polling will see this right away
+      session.generatedImages.push(imageWithGcs);
+      console.log(`Progress: ${currentIndex}/${totalCount} images complete (${imageResult.perspectiveId})`);
+    };
+
+    const results = await imageGenerator.generateFromMasterPrompts(
+      masterPrompts,
+      referenceBuffers,
+      {},  // No composition image buffers needed
+      session.category,  // Pass category for model selection
+      onImageComplete  // Progressive callback for mobile polling
+    );
+
     session.status = 'generated';
     console.log(`Generation complete for session ${session.id}`);
   } catch (error) {
