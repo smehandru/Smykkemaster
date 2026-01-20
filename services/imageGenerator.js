@@ -8,13 +8,13 @@ const PROJECT_ID = process.env.GOOGLE_PROJECT_ID || 'project-bcb47e5a-1886-41ee-
 const LOCATION = 'us-central1';
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 
-// All categories use gemini-3-pro-image-preview
+// All categories use gemini-2.5-flash-image (API key supported)
 const FLASH_MODEL_CATEGORIES = [];
 
 // Determine which model to use based on category
 function getModelForCategory(category) {
-  // All categories now use gemini-3-pro-image-preview
-  return 'gemini-3-pro-image-preview';
+  // All categories use gemini-2.5-flash-image (supports API key authentication)
+  return 'gemini-2.5-flash-image';
 }
 
 // Setup credentials for Vertex AI
