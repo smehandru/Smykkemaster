@@ -5,16 +5,16 @@ const fs = require('fs');
 const { buildFullPrompt, PROMPTS } = require('../config/prompts');
 
 const PROJECT_ID = process.env.GOOGLE_PROJECT_ID || 'project-bcb47e5a-1886-41ee-a91';
-const LOCATION = 'us-east4';  // Changed to us-east4 (Northern Virginia) for better availability
+const LOCATION = 'us-central1';
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 
-// All categories use gemini-2.5-flash-image (Vertex AI us-east4)
+// All categories use gemini-3-pro-image-preview
 const FLASH_MODEL_CATEGORIES = [];
 
 // Determine which model to use based on category
 function getModelForCategory(category) {
-  // All categories use gemini-2.5-flash-image (available in Vertex AI us-east4)
-  return 'gemini-2.5-flash-image';
+  // All categories use gemini-3-pro-image-preview (Google AI Studio API key)
+  return 'gemini-3-pro-image-preview';
 }
 
 // Setup credentials for Vertex AI
@@ -94,9 +94,8 @@ function initializeClients() {
 }
 
 function shouldUseApiKey(modelName) {
-  // Use Vertex AI for regional control (us-east4)
-  // gemini-2.5-flash-image will use Vertex AI with service account
-  const apiKeyModels = [];
+  // Use Google AI Studio API key for gemini-3-pro-image-preview
+  const apiKeyModels = ['gemini-3-pro-image-preview'];
   return apiKeyModels.includes(modelName) && GEMINI_API_KEY && genAI;
 }
 
