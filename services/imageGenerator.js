@@ -94,9 +94,9 @@ function initializeClients() {
 }
 
 function shouldUseApiKey(modelName) {
-  // Use API key for gemini-3-pro-image-preview, gemini-2.5-flash-image, and gemini-3-flash if available
-  // All other models use Vertex AI
-  const apiKeyModels = ['gemini-3-pro-image-preview', 'gemini-2.5-flash-image', 'gemini-3-flash'];
+  // gemini-3-pro-image-preview uses Vertex AI (more stable for production)
+  // gemini-2.5-flash-image and gemini-3-flash can use Gemini API key if available
+  const apiKeyModels = ['gemini-2.5-flash-image', 'gemini-3-flash'];
   return apiKeyModels.includes(modelName) && GEMINI_API_KEY && genAI;
 }
 
