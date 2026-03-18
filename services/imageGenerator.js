@@ -8,13 +8,13 @@ const PROJECT_ID = process.env.GOOGLE_PROJECT_ID || 'project-bcb47e5a-1886-41ee-
 const LOCATION = 'us-central1';
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 
-// All categories use gemini-3-pro-image-preview
+// All categories use gemini-3-pro-image
 const FLASH_MODEL_CATEGORIES = [];
 
 // Determine which model to use based on category
 function getModelForCategory(category) {
-  // All categories use gemini-3-pro-image-preview (Google AI Studio API key)
-  return 'gemini-3-pro-image-preview';
+  // All categories use gemini-3-pro-image (Google AI Studio API key)
+  return 'gemini-3-pro-image';
 }
 
 // Setup credentials for Vertex AI
@@ -82,7 +82,7 @@ function initializeClients() {
     });
   }
 
-  // Initialize GoogleGenAI client if API key is available (only for gemini-3-pro-image-preview)
+  // Initialize GoogleGenAI client if API key is available (only for gemini-3-pro-image)
   if (!genAI && GEMINI_API_KEY) {
     console.log('Initializing GoogleGenAI client (API key)');
     genAI = new GoogleGenAI({
@@ -94,8 +94,8 @@ function initializeClients() {
 }
 
 function shouldUseApiKey(modelName) {
-  // Use Google AI Studio API key for gemini-3-pro-image-preview
-  const apiKeyModels = ['gemini-3-pro-image-preview'];
+  // Use Google AI Studio API key for gemini-3-pro-image
+  const apiKeyModels = ['gemini-3-pro-image'];
   return apiKeyModels.includes(modelName) && GEMINI_API_KEY && genAI;
 }
 
@@ -103,7 +103,7 @@ function shouldUseApiKey(modelName) {
 async function generateSingleImage(prompt, referenceImageBuffers, category = null, retries = RATE_LIMIT.maxRetries) {
   return enqueueRequest(async () => {
     // Determine which model to use based on category
-    const selectedModel = category ? getModelForCategory(category) : 'gemini-3-pro-image-preview';
+    const selectedModel = category ? getModelForCategory(category) : 'gemini-3-pro-image';
 
     // Initialize clients
     const { genAI: apiClient, vertexAI: vertexClient } = initializeClients();
@@ -143,8 +143,8 @@ async function generateSingleImage(prompt, referenceImageBuffers, category = nul
       const startTime = Date.now();
 
       // Determine responseModalities based on model
-      // gemini-3-pro-image-preview supports both image and text output
-      const responseModalities = (selectedModel === 'gemini-3-flash' || selectedModel === 'gemini-2.5-flash-image' || selectedModel === 'gemini-2.0-flash-exp' || selectedModel === 'gemini-3-pro-image-preview')
+      // gemini-3-pro-image supports both image and text output
+      const responseModalities = (selectedModel === 'gemini-3-flash' || selectedModel === 'gemini-2.5-flash-image' || selectedModel === 'gemini-2.0-flash-exp' || selectedModel === 'gemini-3-pro-image')
         ? ['image', 'text']
         : ['image'];
 
@@ -390,7 +390,7 @@ async function regenerateImage(visualDescriptor, category, ethnicity, perspectiv
 async function generateSingleImageWithComposition(prompt, productImageBuffers, compositionImageBuffer = null, category = null, retries = RATE_LIMIT.maxRetries) {
   return enqueueRequest(async () => {
     // Determine which model to use based on category
-    const selectedModel = category ? getModelForCategory(category) : 'gemini-3-pro-image-preview';
+    const selectedModel = category ? getModelForCategory(category) : 'gemini-3-pro-image';
 
     // Initialize clients
     const { genAI: apiClient, vertexAI: vertexClient } = initializeClients();
@@ -433,8 +433,8 @@ async function generateSingleImageWithComposition(prompt, productImageBuffers, c
       const startTime = Date.now();
 
       // Determine responseModalities based on model
-      // gemini-3-pro-image-preview supports both image and text output
-      const responseModalities = (selectedModel === 'gemini-3-flash' || selectedModel === 'gemini-2.5-flash-image' || selectedModel === 'gemini-2.0-flash-exp' || selectedModel === 'gemini-3-pro-image-preview')
+      // gemini-3-pro-image supports both image and text output
+      const responseModalities = (selectedModel === 'gemini-3-flash' || selectedModel === 'gemini-2.5-flash-image' || selectedModel === 'gemini-2.0-flash-exp' || selectedModel === 'gemini-3-pro-image')
         ? ['image', 'text']
         : ['image'];
 
