@@ -13,7 +13,7 @@ const FLASH_MODEL_CATEGORIES = [];
 
 // Determine which model to use based on category
 function getModelForCategory(category) {
-  // All categories use gemini-3-pro-image-preview (Vertex AI service account)
+  // All categories use gemini-3-pro-image-preview (Google AI Studio API key)
   return 'gemini-3-pro-image-preview';
 }
 
@@ -94,8 +94,8 @@ function initializeClients() {
 }
 
 function shouldUseApiKey(modelName) {
-  // gemini-3-pro-image-preview uses Vertex AI service account, not API key
-  const apiKeyModels = [];
+  // gemini-3-pro-image-preview requires Google AI Studio API key (not available via Vertex AI without allowlist)
+  const apiKeyModels = ['gemini-3-pro-image-preview'];
   return apiKeyModels.includes(modelName) && GEMINI_API_KEY && genAI;
 }
 
