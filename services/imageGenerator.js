@@ -158,6 +158,7 @@ async function generateSingleImage(prompt, referenceImageBuffers, category = nul
           generationConfig: {
             responseModalities,
             candidateCount: 1,
+            imageConfig: { imageSize: '2K' },
           },
           safetySettings: [
             { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
@@ -447,6 +448,7 @@ async function generateSingleImageWithComposition(prompt, productImageBuffers, c
           generationConfig: {
             responseModalities,
             candidateCount: 1,
+            imageConfig: { imageSize: '2K' },
           },
           safetySettings: [
             { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
