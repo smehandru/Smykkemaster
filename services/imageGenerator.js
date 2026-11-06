@@ -82,7 +82,7 @@ function initializeClients() {
     });
   }
 
-  // Initialize GoogleGenAI client if API key is available (only for gemini-3-pro-image-preview)
+  // Initialize GoogleGenAI client if API key is available
   if (!genAI && GEMINI_API_KEY) {
     console.log('Initializing GoogleGenAI client (API key)');
     genAI = new GoogleGenAI({
@@ -94,7 +94,7 @@ function initializeClients() {
 }
 
 function shouldUseApiKey(modelName) {
-  // Use Google AI Studio API key for gemini-3-pro-image-preview
+  // gemini-3-pro-image-preview requires Google AI Studio API key (not available via Vertex AI without allowlist)
   const apiKeyModels = ['gemini-3-pro-image-preview'];
   return apiKeyModels.includes(modelName) && GEMINI_API_KEY && genAI;
 }
@@ -155,16 +155,17 @@ async function generateSingleImage(prompt, referenceImageBuffers, category = nul
         response = await apiClient.models.generateContent({
           model: selectedModel,
           contents: parts,
-          generationConfig: {
+          config: {
             responseModalities,
             candidateCount: 1,
+            imageConfig: { imageSize: '2K', aspectRatio: '1:1' },
+            safetySettings: [
+              { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
+              { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
+              { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
+              { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
+            ],
           },
-          safetySettings: [
-            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
-            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
-            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
-            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
-          ]
         });
       } else {
         // Vertex AI approach (service account)
@@ -444,16 +445,17 @@ async function generateSingleImageWithComposition(prompt, productImageBuffers, c
         response = await apiClient.models.generateContent({
           model: selectedModel,
           contents: parts,
-          generationConfig: {
+          config: {
             responseModalities,
             candidateCount: 1,
+            imageConfig: { imageSize: '2K', aspectRatio: '1:1' },
+            safetySettings: [
+              { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
+              { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
+              { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
+              { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
+            ],
           },
-          safetySettings: [
-            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
-            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
-            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
-            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
-          ]
         });
       } else {
         // Vertex AI approach (service account)
