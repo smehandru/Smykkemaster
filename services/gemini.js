@@ -2,32 +2,14 @@ const { GoogleGenAI } = require('@google/genai');
 const path = require('path');
 const fs = require('fs');
 
-const PROJECT_ID = process.env.GOOGLE_PROJECT_ID || 'project-bcb47e5a-1886-41ee-a91';
-const LOCATION = 'us-central1'; // Global endpoint for Gemini 3
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 
-// Setup credentials for Vertex AI
-function setupCredentials() {
-  if (process.env.GOOGLE_CREDENTIALS) {
-    // Write credentials to temp file for Vertex AI
-    const tempPath = '/tmp/google-credentials.json';
-    fs.writeFileSync(tempPath, process.env.GOOGLE_CREDENTIALS);
-    process.env.GOOGLE_APPLICATION_CREDENTIALS = tempPath;
-  } else if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-    process.env.GOOGLE_APPLICATION_CREDENTIALS = path.join(__dirname, '..', 'service-account.json');
-  }
-}
-
-// Initialize Google GenAI with Vertex AI
+// Initialize Google GenAI with API key
 let genAI = null;
 
 function initializeGenAI() {
   if (!genAI) {
-    setupCredentials();
-    genAI = new GoogleGenAI({
-      vertexai: true,
-      project: PROJECT_ID,
-      location: LOCATION
-    });
+    genAI = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
   }
   return genAI;
 }
